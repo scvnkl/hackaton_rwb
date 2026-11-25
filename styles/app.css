@@ -727,6 +727,19 @@ input[type="range"] {
   margin: 12px 0;
   font-size: 12px;
 }
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.preset-row button.active {
+  background: var(--wb-dark);
+  color: white;
+}
+#presetCaption {
+  display: block;
+  margin: 4px 0;
+}
 .audit label {
   display: inline-block;
   margin: 4px;

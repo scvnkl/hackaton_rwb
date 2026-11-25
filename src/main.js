@@ -20,6 +20,8 @@ for (const button of document.querySelectorAll("[data-size]"))
 for (const button of document.querySelectorAll("[data-stock]"))
   button.addEventListener("click", () => storeAction(button.dataset.stock));
 for (const id of [
+  "storageDays",
+  "useCompetition",
   "batch",
   "dim0",
   "dim1",
@@ -30,7 +32,7 @@ for (const id of [
   "stockPoint",
 ])
   el(id).addEventListener("change", recalculateAll);
-for (const id of ["truckCountSlider", "flowSlider"])
+for (const id of ["truckCountSlider", "flowSlider", "shelfSlider"])
   el(id).addEventListener("input", recalculateAll);
 el("scrub").addEventListener("input", (event) => {
   stopClock();
@@ -40,6 +42,10 @@ el("scrub").addEventListener("input", (event) => {
 el("stockPoint").replaceChildren(
   ...PVZ_LIST.map((p) => new Option(p.name, p.id)),
 );
+for (const b of document.querySelectorAll("[data-preset]"))
+  b.addEventListener("click", () => applyPreset(b.dataset.preset));
+el("storageRate").textContent = rub(CONFIG.storagePerBoxDay);
+el("scrub").max = CONFIG.shiftMinutes;
 populateSelect();
 recalculateAll();
 setTimeout(() => map.invalidateSize(), 100);

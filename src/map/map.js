@@ -15,17 +15,36 @@ map.attributionControl.addAttribution(
 const markersLayer = L.layerGroup().addTo(map);
 const roadsLayer = L.layerGroup().addTo(map);
 const trucksLayer = L.layerGroup().addTo(map);
-function plot() {
+let plottedTrips = [];
+function plot(active = []) {
+  const trips = active.length ? active : [previews[routeMode]].filter(Boolean);
+  if (
+    trips.length === plottedTrips.length &&
+    trips.every((r, i) => r === plottedTrips[i])
+  )
+    return;
+  plottedTrips = trips;
   roadsLayer.clearLayers();
-  const r = previews[routeMode];
-  if (!r) return;
-  for (let i = 1; i < r.ids.length; i++) {
-    let leg = roads[r.ids[i - 1] + ">" + r.ids[i]];
-    L.polyline(
-      leg.track.map((x) => x.slice(0, 2)),
-      { color: r.mode === "hybrid" ? "#c46c12" : "#2563eb", weight: 5 },
-    ).addTo(roadsLayer);
-  }
+  const drawn = new Set();
+  for (const r of trips)
+    for (const { leg } of r.phases) {
+      if (!leg || drawn.has(r.mode + leg.key)) continue;
+      drawn.add(r.mode + leg.key);
+      L.polyline(
+        leg.track.map((p) => p.slice(0, 2)),
+        {
+          color: r.mode === "hybrid" ? "#c46c12" : "#2563eb",
+          weight: 5,
+          dashArray: leg.estimatedGeometry ? "6 8" : null,
+        },
+      )
+        .bindTooltip(
+          leg.estimatedGeometry
+            ? "Схематичное плечо без дорожного трека"
+            : "Дорожный трек OSM",
+        )
+        .addTo(roadsLayer);
+    }
 }
 function renderMarkers() {
   markersLayer.clearLayers();

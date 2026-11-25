@@ -5,11 +5,21 @@ function addRow(body, values) {
 function econTable() {
   const view = el("economics-view").content.cloneNode(true),
     body = view.querySelector("tbody");
+  view.querySelector(".rate-note").textContent =
+    "Выход машины " +
+    rub(CONFIG.exitFee) +
+    ", километр " +
+    rub(CONFIG.perKm) +
+    ", минута " +
+    rub(CONFIG.perMin) +
+    ", постоянные расходы за смену " +
+    rub(CONFIG.shiftFixed) +
+    ".";
   const cols = [previews.direct, previews.hybrid];
   function row(label, format) {
     addRow(body, [label, ...cols.map((r) => (r ? format(r) : "—"))]);
   }
-  addRow(body, ["Тариф схемы", tariffLabel("direct"), tariffLabel("hybrid")]);
+  addRow(body, ["Базовый тариф", rub(customerTariff()), rub(customerTariff())]);
   row("К оплате за выбранный маршрут", (r) => rub(r.price));
   const labels = new Set(cols.flatMap((r) => (r ? Object.keys(r.rows) : [])));
   for (const k of labels) row(k, (r) => rub((r.rows[k] || 0) / r.n));
@@ -20,21 +30,24 @@ function econTable() {
       ? rub(r.margin / r.n - previews.direct.margin / previews.direct.n)
       : "—",
   );
-  row(
-    "Наценка (+) / скидка (−) к СЦ",
-    (r) =>
-      (r.price > customerTariff("direct").total ? "+" : "") +
-      rub(r.price - customerTariff("direct").total),
+  row("ПВЗ: выдача и оформление возврата", (r) => rub(r.pvzBase / r.n));
+  row("ПВЗ: пересортировка", (r) => rub(r.pvzHub / r.n));
+  row("Компенсация покупателю (SLA) / оплаченный заказ", (r) =>
+    rub(r.compPerOrder),
   );
-  row("Начисления ПВЗ", (r) => rub(r.pvz / r.n));
+  row("Расходы продавца", (r) => rub(r.seller.total / r.n));
+  row(
+    "До прибытия в конечный ПВЗ",
+    (r) => Math.round(r.eta - r.start) + " мин",
+  );
   row("Путь до выдачи", (r) => r.outKm.toFixed(2) + " км");
   row("Рейс с возвратом", (r) => Math.round(r.end - r.start) + " мин");
   return view;
 }
 function report() {
   const view = el("shift-view").content.cloneNode(true);
-  const classic = metrics("direct", 480),
-    hybrid = metrics("hybrid", 480);
+  const classic = metrics("direct", CONFIG.shiftMinutes),
+    hybrid = metrics("hybrid", CONFIG.shiftMinutes);
   const difference = Math.round((hybrid.margin - classic.margin) * 100);
   const label = (n) =>
     n.toLocaleString("ru-RU", {
@@ -60,7 +73,9 @@ function report() {
         ? "Выберите гибридную схему"
         : "Выберите доставку через СЦ";
     reason =
-      "Расчётный остаток WB за 8 часов выше на " +
+      (difference > 0
+        ? "Гибрид увеличивает остаток WB на "
+        : "Через СЦ остаток WB выше на ") +
       label(Math.abs(difference) / 100) +
       ".";
     if (Math.max(hybrid.margin, classic.margin) < 0)

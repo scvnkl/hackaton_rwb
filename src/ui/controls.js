@@ -17,20 +17,20 @@ function storeAction(action) {
     entry.units -= 2;
     entry.litres = entry.units * entry.unit;
   }
-  if (action === "day") entry.fee += entry.units * 3;
+  if (action === "day") entry.fee += entry.units * CONFIG.storagePerBoxDay;
   stock.set(id, entry);
   recalculateAll();
   el("stockStatus").textContent += msg;
 }
 function recalculateAll() {
-  for (const id of ["batch", "dim0", "dim1", "dim2", "kg"]) {
+  for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
     if (!el(id).checkValidity()) {
       stopClock();
       el(id).reportValidity();
       return;
     }
   }
-  for (const id of ["batch", "dim0", "dim1", "dim2", "kg"]) {
+  for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
     let f = el(id);
     if (!f.reportValidity()) {
       stopClock();
@@ -68,18 +68,14 @@ function recalculateAll() {
         " / заказ. " +
         h.reason +
         "."
-      : (parcelSize === "oversize"
-          ? "В тариф включена наценка за габарит. "
-          : "") +
-        "К оплате: " +
-        rub(h.price) +
-        " / заказ.";
+      : "К оплате с учётом SLA: " + rub(h.price) + " / заказ.";
   el("chainExplanation").textContent = r
     ? pathName(r) + (r.reason ? " · " + r.reason : "")
     : "Недостаточная вместимость или дорожный маршрут недоступен";
   el("costSplitCard").replaceChildren(econTable());
   el("ordersCountLabel").textContent =
     Math.round((140 * val("flowSlider")) / 100) + " зак/ч";
+  el("shelfValue").textContent = val("shelfSlider") - 100 + " п.п.";
   el("flowLabel").textContent = val("flowSlider") / 100 + "×";
   el("truckCountLabel").textContent = val("truckCountSlider");
   for (const [id, m] of [

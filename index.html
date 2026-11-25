@@ -9,10 +9,17 @@
 
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="styles/app.css" />
+    <script defer src="src/config.js"></script>
     <script defer src="vendor/leaflet/leaflet.js"></script>
     <script defer src="data/locations.js"></script>
     <script defer src="data/atlas.js"></script>
     <script defer src="data/routes.js"></script>
+    <script defer src="data/cities/yoshkar-ola/matrix.json.js"></script>
+    <script defer src="src/core/geo.js"></script>
+    <script defer src="src/core/loadindex.js"></script>
+    <script defer src="src/core/sla.js"></script>
+    <script defer src="src/core/sweep.js"></script>
+    <script defer src="src/ui/presets.js"></script>
     <script defer src="src/state.js"></script>
     <script defer src="src/map/atlas.js"></script>
     <script defer src="src/map/map.js"></script>
@@ -92,7 +99,7 @@
             type="range"
             id="flowSlider"
             min="50"
-            max="180"
+            max="200"
             step="10"
             value="100"
           />
@@ -118,7 +125,7 @@
             </div>
             <div class="stat-cell">
               <div class="payment-value stat-num" id="stPvzEarned">0 ₽</div>
-              <div class="stat-txt">Начисления ПВЗ · закрытые рейсы</div>
+              <div class="stat-txt">Пересортировка в ПВЗ · закрытые рейсы</div>
             </div>
           </div>
         </div>
@@ -176,12 +183,44 @@
               <span id="priceHybrid">— ₽</span>
             </div>
             <div class="route-sub" id="metaHybrid">
-              В обход СЦ 2 • дешевле для малых/средних за счёт отказа от СЦ 2
+              Пересортировка в промежуточном ПВЗ
             </div>
           </div>
 
           <section class="audit">
             <h3>Условия эксперимента</h3>
+            <div class="preset-row">
+              <button data-preset="urban">Город</button>
+              <button data-preset="hub">Хаб</button>
+              <button data-preset="trunk">Магистраль</button>
+              <button data-preset="returns">Возврат</button>
+              <button data-preset="failure">Сбой</button>
+              <button data-preset="longstay">Хранение</button>
+            </div>
+            <span id="presetCaption" class="preset-caption"></span>
+            <label
+              >Поправка к загрузке полок <output id="shelfValue"></output
+              ><input
+                id="shelfSlider"
+                type="range"
+                min="50"
+                max="140"
+                value="100"
+            /></label>
+            <label
+              >Хранение партии, суток
+              <input
+                id="storageDays"
+                type="number"
+                value="0"
+                min="0"
+                step="1"
+                required
+            /></label>
+            <label
+              ><input id="useCompetition" type="checkbox" /> Учитывать соседние
+              ПВЗ</label
+            >
             <label
               >Заказов в партии
               <input
@@ -254,8 +293,9 @@
             ><button data-stock="day">+ сутки</button>
             <p id="stockStatus"></p>
             <small
-              >3 ₽ за единицу в сутки. Запас уменьшает доступную полку. Этот
-              договор хранения учитывается отдельно от перевозки.</small
+              ><span id="storageRate"></span> за единицу в сутки. Запас
+              уменьшает доступную полку. Этот договор хранения учитывается
+              отдельно от перевозки.</small
             >
           </section>
           <div class="cost-card" id="costSplitCard"></div>
@@ -362,9 +402,8 @@
       </div>
       <small
         >¹ При отказе хаба применён тариф классики. В межгороде сохранён СЦ
-        Чебоксар. Учебные ставки: выход 160 ₽, 18 ₽/км, 1,5 ₽/мин; постоянный
-        бюджет СЦ 4 800 ₽ на смену во всех схемах включён в итог смены. Таблица
-        на заказ показывает вклад до этого расхода.</small
+        Чебоксар. <span class="rate-note"></span> Таблица на заказ показывает
+        вклад до этого расхода.</small
       ></template
     >
     <template id="shift-view"

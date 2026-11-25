@@ -1,11 +1,16 @@
 function calcLoadPct(pvz) {
-  const flow = Number(document.getElementById("flowSlider").value) / 100;
-  return Math.min(99, Math.round(pvz.baseLoad * flow + 10));
+  if (LOAD_OVERRIDE !== null) return LOAD_OVERRIDE;
+  if (el("stress").checked) return 99;
+  const demandLoad = Math.min(
+    99,
+    Math.round((effectiveLoad(pvz) * val("flowSlider")) / 100 + 10),
+  );
+  return Math.max(5, Math.min(99, demandLoad + val("shelfSlider") - 100));
 }
 const volume = () => (val("dim0") * val("dim1") * val("dim2")) / 1000;
 const inventory = (id) => stock.get(id) || { units: 0, litres: 0, fee: 0 };
 function room(p) {
-  const load = el("stress").checked ? 99 : calcLoadPct(p);
+  const load = calcLoadPct(p);
   return {
     litres: Math.max(0, (3000 * (100 - load)) / 100 - inventory(p.id).litres),
     minutes: Math.max(0, (60 * (100 - load)) / 100 - 2),
