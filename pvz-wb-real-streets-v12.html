@@ -1454,6 +1454,15 @@ function room(p){
 function fits(){return [val('dim0'),val('dim1'),val('dim2')].sort((a,b)=>a-b).every((x,i)=>x<=[50,60,120][i])&&val('kg')<=25}
 function manifest(){return Math.max(0,Math.min(val('batch'),Math.floor(6000/volume()),Math.floor(1000/val('kg'))))}
 function chain(mode,hub){let ids=['sc-1'];if(mode==='direct')ids.push('sc-2');if(geoMode==='intercity')ids.push('sc-ch');if(hub)ids.push(hub.id);ids.push(finalPvzId);return ids}
+function customerTariff(mode){
+ const classic={small:119,medium:179,oversize:340}[parcelSize]+(geoMode==='intercity'?140:0);
+ const adjustment=mode==='hybrid'?{small:-30,medium:-34,oversize:120}[parcelSize]:0;
+ return {classic,adjustment,total:classic+adjustment};
+}
+function tariffLabel(mode){
+ const t=customerTariff(mode);
+ return rub(t.total)+(t.adjustment>0?' (+'+rub(t.adjustment)+')':'');
+}
 function trip(mode,hub,n,start,incident){
  const ids=chain(mode,hub),phases=[],scans=[],rows={},res=[],size=parcelSize,bulk=size==='oversize';
  let t=start,km=0,outKm=0,issued=0,returned=0,hubPay=0;
@@ -1463,7 +1472,7 @@ function trip(mode,hub,n,start,incident){
  function stop(id,min,text){phases.push({id,start:t,end:t+min,text});t+=min}
  function drive(a,b){let leg=roads[a+'>'+b];if(!leg)throw Error('Нет дорожного плеча '+nodeName(a)+' → '+nodeName(b));let duration=leg.track.at(-1)[2]/60;
  phases.push({leg,start:t,end:t+duration,text:'В пути → '+nodeName(b)});t+=duration;km+=leg.km}
- const price=({small:[119,89],medium:[179,145],oversize:[340,460]})[size][mode==='hybrid'?1:0]+(geoMode==='intercity'?140:0);
+ const price=customerTariff(mode).total;
  stop(ids[0],25,'Приём и погрузка в СЦ 1');charge('СЦ 1 · обработка',20*n);scan(ids[0],'Передано водителю: '+n);
  for(let i=1;i<ids.length;i++){const id=ids[i];drive(ids[i-1],id);
  if(i===ids.length-1){outKm=km;stop(id,2+.25*n,'Сканирование и выдача');let qty=n-(incident==='error'?1:0);scan(id,'Выдано '+qty,qty)}
@@ -1509,7 +1518,7 @@ function metrics(mode,t){let issued=0,back=0,pvz=0,margin=0,finished=0;
 }
 function econTable(){let labels=new Set(Object.values(previews).flatMap(r=>r?Object.keys(r.rows):[]));const cols=Object.values(previews);
  function row(k,fn){return '<tr><td>'+k+'</td>'+cols.map(r=>'<td>'+(r?fn(r):'—')+'</td>').join('')+'</tr>'}
- return '<div style="overflow:auto"><table class="summary-table"><tr><th>На заказ</th><th>Через СЦ 2</th><th>Гибрид¹</th></tr>'+row('Цена доставки',r=>rub(r.price))+[...labels].map(k=>row(k,r=>rub((r.rows[k]||0)/r.n))).join('')+row('Расходы WB',r=>rub(r.costs/r.n))+row('Вклад WB до постоянных расходов',r=>rub(r.margin/r.n))+row('Δ вклада WB к классике',r=>previews.direct?rub(r.margin/r.n-previews.direct.margin/previews.direct.n):'—')+row('Скидка покупателю к классике',r=>previews.direct?rub(previews.direct.price-r.price):'—')+row('Начисления ПВЗ',r=>rub(r.pvz/r.n))+row('Путь до выдачи',r=>r.outKm.toFixed(2)+' км')+row('Рейс с возвратом',r=>Math.round(r.end-r.start)+' мин')+'</table></div><small>¹ При отказе хаба применён тариф классики. В межгороде сохранён СЦ Чебоксар. Учебные ставки: выход 160 ₽, 18 ₽/км, 1,5 ₽/мин; постоянный бюджет СЦ 4 800 ₽ на смену во всех схемах включён в итог смены. Таблица на заказ показывает вклад до этого расхода.</small>';
+ return '<div style="overflow:auto"><table class="summary-table"><tr><th>На заказ</th><th>Через СЦ 2</th><th>Гибрид¹</th></tr>'+'<tr><td>Тариф схемы</td><td>'+tariffLabel('direct')+'</td><td>'+tariffLabel('hybrid')+'</td></tr>'+row('К оплате за выбранный маршрут',r=>rub(r.price))+[...labels].map(k=>row(k,r=>rub((r.rows[k]||0)/r.n))).join('')+row('Расходы WB',r=>rub(r.costs/r.n))+row('Вклад WB до постоянных расходов',r=>rub(r.margin/r.n))+row('Δ вклада WB к классике',r=>previews.direct?rub(r.margin/r.n-previews.direct.margin/previews.direct.n):'—')+row('Наценка (+) / скидка (−) к СЦ',r=>(r.price>customerTariff('direct').total?'+':'')+rub(r.price-customerTariff('direct').total))+row('Начисления ПВЗ',r=>rub(r.pvz/r.n))+row('Путь до выдачи',r=>r.outKm.toFixed(2)+' км')+row('Рейс с возвратом',r=>Math.round(r.end-r.start)+' мин')+'</table></div><small>¹ При отказе хаба применён тариф классики. В межгороде сохранён СЦ Чебоксар. Учебные ставки: выход 160 ₽, 18 ₽/км, 1,5 ₽/мин; постоянный бюджет СЦ 4 800 ₽ на смену во всех схемах включён в итог смены. Таблица на заказ показывает вклад до этого расхода.</small>';
 }
 function recommendation(){
   const classic=metrics('direct',480), hybrid=metrics('hybrid',480);
@@ -1533,7 +1542,7 @@ function recommendation(){
 function report(){return recommendation()+ '<table class="summary-table"><tr><th>Смена 8 ч</th><th>Спрос</th><th>Выдано / возвраты</th><th>Не вывезено</th><th>Остаток WB</th></tr>'+Object.entries(runs).map(([k,r])=>{let m=metrics(k,480);return '<tr><td>'+({direct:'СЦ',hybrid:'Гибрид'})[k]+'</td><td>'+r.demand+'</td><td>'+m.issued+' / '+m.back+'</td><td>'+(r.demand-m.issued)+'</td><td>'+rub(m.margin)+'</td></tr>'}).join('')+'</table><p>Допуск рейса — машина успевает вернуться до конца смены. Невывезенный спрос переносится. Возвраты сторнируют выручку, расходы исправления оплачивает WB.</p>'}
 function renderAnalyticsDrawer(){el('drawerSubtitle').textContent='Сравнение при одинаковом спросе и парке машин';el('analyticsDrawer').querySelector('.drawer-body').innerHTML=econTable()+report()}
 function toggleAnalyticsDrawer(){drawerOpen=!drawerOpen;el('analyticsDrawer').classList.toggle('open',drawerOpen);if(drawerOpen)renderAnalyticsDrawer()}
-function openSummaryModal(){el('summaryTopKpis').innerHTML=report();el('summaryTopKpis').style.display='block';el('summaryTable').innerHTML='<tr><th>Схема</th><th>Узлы</th></tr>'+Object.entries(previews).map(([k,r])=>'<tr><td>'+({direct:'Классика',hybrid:'Гибрид'})[k]+'</td><td>'+(r?pathName(r):'Машина не вмещает коробку')+'</td></tr>').join('');el('summaryModal').classList.add('open')}
+function openSummaryModal(){el('summaryTopKpis').innerHTML=report();el('summaryTopKpis').style.display='block';el('summaryTable').innerHTML='<tr><th>Схема</th><th>Узлы</th><th>Тариф / заказ</th><th>К оплате / заказ</th></tr>'+Object.entries(previews).map(([k,r])=>'<tr><td>'+({direct:'Классика',hybrid:'Гибрид'})[k]+'</td><td>'+(r?pathName(r):'Доставка недоступна')+'</td><td>'+tariffLabel(k)+'</td><td>'+(r?rub(r.price):'—')+'</td></tr>').join('');el('summaryModal').classList.add('open')}
 function closeSummaryModal(){el('summaryModal').classList.remove('open')}
 function plot(){
  roadsLayer.clearLayers();const r=previews[routeMode];if(!r)return;
@@ -1573,8 +1582,8 @@ function recalculateAll(){
  const r=previews[routeMode],h=previews.hybrid;activeChain.hubPvz=h?.hub;activeChain.directKm=previews.direct?.outKm;activeChain.hybridKm=h?.outKm;
  el('headerSubStatus').textContent='Дорожная сеть OpenStreetMap · учебный пилот · координаты СЦ 1 и СЦ 2 приблизительные';
  el('mDirectKm').textContent=previews.direct?previews.direct.outKm.toFixed(2)+' км':'—';el('mHybridKm').textContent=h?h.outKm.toFixed(2)+' км':'—';
- el('mFinalLoad').textContent=calcLoadPct(final)+'%';el('priceDirect').textContent=n?rub(previews.direct.price):'—';el('priceHybrid').textContent=h?rub(h.price):'—';
- el('metaHybrid').textContent=!h?'Доставка недоступна':h.reason||'Кросс-докинг · проверка полки и минут сотрудника';
+ el('mFinalLoad').textContent=calcLoadPct(final)+'%';el('priceDirect').textContent=tariffLabel('direct');el('priceHybrid').textContent=tariffLabel('hybrid');
+ el('metaHybrid').textContent=!h?'Доставка недоступна':h.mode==='direct'?'Эта партия поедет через СЦ за '+rub(h.price)+' / заказ. '+h.reason+'.':(parcelSize==='oversize'?'В тариф включена наценка за габарит. ':'')+'К оплате: '+rub(h.price)+' / заказ.';
  el('chainExplanation').textContent=r?pathName(r)+(r.reason?' · '+r.reason:''):'Недостаточная вместимость или дорожный маршрут недоступен';
  el('costSplitCard').innerHTML=econTable();el('ordersCountLabel').textContent=Math.round(140*val('flowSlider')/100)+' зак/ч';el('flowLabel').textContent=val('flowSlider')/100+'×';el('truckCountLabel').textContent=val('truckCountSlider');
  for(const [id,m] of [['optDirect','direct'],['optHybrid','hybrid']])el(id).classList.toggle('active',m===routeMode);
