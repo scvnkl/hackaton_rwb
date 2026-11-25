@@ -1,8 +1,400 @@
 <!doctype html>
 <html lang="ru">
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="refresh" content="0;url=pvz-wb-real-streets-v12.html">
-<title>Mesh-доставка — финальный симулятор</title>
-<a href="pvz-wb-real-streets-v12.html">Открыть финальный симулятор v12</a>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>
+      WB ПВЗ — СЦ 1 (Медведево) → СЦ 2 vs Гибридный ПВЗ-склад → Конечный ПВЗ
+    </title>
+
+    <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
+    <link rel="stylesheet" href="styles/app.css" />
+    <script defer src="vendor/leaflet/leaflet.js"></script>
+    <script defer src="data/locations.js"></script>
+    <script defer src="data/atlas.js"></script>
+    <script defer src="data/routes.js"></script>
+    <script defer src="src/state.js"></script>
+    <script defer src="src/map/atlas.js"></script>
+    <script defer src="src/map/map.js"></script>
+    <script defer src="src/model/capacity.js"></script>
+    <script defer src="src/model/trips.js"></script>
+    <script defer src="src/model/shift.js"></script>
+    <script defer src="src/ui/reports.js"></script>
+    <script defer src="src/ui/playback.js"></script>
+    <script defer src="src/ui/controls.js"></script>
+    <script defer src="src/main.js"></script>
+  </head>
+  <body>
+    <header>
+      <div class="brand">
+        <div class="brand-badge">WB SIM</div>
+        <div>
+          <div class="brand-title">
+            СЦ 1 (Медведево) → СЦ 2 vs Гибридный ПВЗ-склад → Конечный ПВЗ
+          </div>
+          <div class="brand-sub" id="headerSubStatus">
+            Схема по вашей карте • Йошкар-Ола ↔ Чебоксары
+          </div>
+        </div>
+      </div>
+
+      <div class="seg-group">
+        <button class="seg-btn active" id="geoLocal">
+          Йошкар-Ола (Медведево)
+        </button>
+        <button class="seg-btn" id="geoInter">Йошкар-Ола ↔ Чебоксары</button>
+      </div>
+    </header>
+
+    <div class="workspace">
+      <aside class="left-panel">
+        <div class="box">
+          <div class="box-head">
+            <span class="box-title"
+              >1. Демонстрация рейса (1 машина по умолчанию)</span
+            >
+            <span id="simClock" class="muted-note">Время: 00:00</span>
+          </div>
+
+          <div class="sim-controls">
+            <button class="sim-btn start" id="btnToggleSim">
+              ▶ Запустить машину
+            </button>
+            <button class="sim-btn reset" id="resetSimulation">Сброс</button>
+            <button class="sim-btn summary-open" id="openSummary">
+              📊 Сводка
+            </button>
+          </div>
+
+          <div class="sim-row">
+            <span
+              >Число машин на маршруте:
+              <strong id="truckCountLabel">1 машина (наглядно)</strong></span
+            >
+            <span id="truckLegStatus">Ожидание старта</span>
+          </div>
+          <input
+            type="range"
+            id="truckCountSlider"
+            min="1"
+            max="3"
+            step="1"
+            value="1"
+          />
+
+          <div class="sim-row">
+            <span
+              >Нагрузка сети заказов: <strong id="flowLabel">1.0×</strong></span
+            >
+            <span id="ordersCountLabel">~140 зак/ч</span>
+          </div>
+          <input
+            type="range"
+            id="flowSlider"
+            min="50"
+            max="180"
+            step="10"
+            value="100"
+          />
+
+          <label
+            >Минута смены
+            <input id="scrub" type="range" min="0" max="480" value="0" /></label
+          ><small id="liveLog" class="event-log"></small>
+          <div class="live-stats">
+            <div class="stat-cell">
+              <div class="stat-num" id="stDelivered">0</div>
+              <div class="stat-txt">Выдано заказов</div>
+            </div>
+            <div class="stat-cell">
+              <div class="stat-num" id="stActiveTrucks">0</div>
+              <div class="stat-txt">Машин сейчас на карте</div>
+            </div>
+            <div class="stat-cell">
+              <div class="savings-value stat-num" id="stMpSaved">0 ₽</div>
+              <div class="stat-txt">
+                Δ остатка WB к классике · закрытые рейсы
+              </div>
+            </div>
+            <div class="stat-cell">
+              <div class="payment-value stat-num" id="stPvzEarned">0 ₽</div>
+              <div class="stat-txt">Начисления ПВЗ · закрытые рейсы</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="box-title">2. Конечный ПВЗ и промежуточный узел</div>
+          <select class="pvz-select" id="finalPvzSelect"></select>
+
+          <div class="chain-banner" id="chainExplanation">
+            <strong>Цепочка маршрута:</strong> расчёт...
+          </div>
+
+          <div class="metrics-grid">
+            <div class="metric-card">
+              <div class="metric-lbl">Без гибрида (СЦ1→СЦ2→Кон)</div>
+              <div class="metric-val" id="mDirectKm">— км</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-lbl">Гибрид (СЦ1→ПВЗ-скл→Кон)</div>
+              <div class="metric-val" id="mHybridKm">— км</div>
+            </div>
+            <div class="metric-card">
+              <div class="metric-lbl">Нагрузка конечного ПВЗ</div>
+              <div class="metric-val" id="mFinalLoad">—%</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="box">
+          <div class="box-title">
+            3. Вариант логистики и распределение денег
+          </div>
+          <div class="seg-group" id="sizeGroup">
+            <button class="seg-btn active" data-size="small">Малая</button>
+            <button class="seg-btn" data-size="medium">Средняя</button>
+            <button class="seg-btn" data-size="oversize">Габаритная</button>
+          </div>
+
+          <div class="route-option" id="optDirect">
+            <div class="route-top">
+              <span>Вариант А (без гибрида): СЦ 1 → СЦ 2 → Конечный ПВЗ</span>
+              <span id="priceDirect">— ₽</span>
+            </div>
+            <div class="route-sub" id="metaDirect">
+              Через 2 сортировочных центра (двойная перевалка на СЦ 1 и СЦ 2)
+            </div>
+          </div>
+
+          <div class="route-option active" id="optHybrid">
+            <div class="route-top">
+              <span
+                >Вариант Б (гибрид): СЦ 1 → Гибридный ПВЗ-склад → Конечный
+                ПВЗ</span
+              >
+              <span id="priceHybrid">— ₽</span>
+            </div>
+            <div class="route-sub" id="metaHybrid">
+              В обход СЦ 2 • дешевле для малых/средних за счёт отказа от СЦ 2
+            </div>
+          </div>
+
+          <section class="audit">
+            <h3>Условия эксперимента</h3>
+            <label
+              >Заказов в партии
+              <input
+                type="number"
+                id="batch"
+                value="20"
+                min="1"
+                step="1"
+                required
+            /></label>
+            <p>Упаковка, см (Д × Ш × В), и масса, кг</p>
+            <label
+              >Д
+              <input
+                id="dim0"
+                type="number"
+                step="0.1"
+                min="0.1"
+                value="25"
+                required /></label
+            ><label
+              >Ш
+              <input
+                id="dim1"
+                type="number"
+                step="0.1"
+                min="0.1"
+                value="20"
+                required /></label
+            ><label
+              >В
+              <input
+                id="dim2"
+                type="number"
+                step="0.1"
+                min="0.1"
+                value="10"
+                required /></label
+            ><label
+              >кг
+              <input
+                id="kg"
+                type="number"
+                step="0.1"
+                min="0.1"
+                value="2"
+                required
+            /></label>
+            <p>
+              Ячейка 120 × 60 × 50 см, до 25 кг. Кузов 6000 л, до 1000 кг. Для
+              кросс-докинга резервируется весь объём партии на время обработки
+              одним сотрудником.
+            </p>
+            <label
+              ><input id="stress" type="checkbox" /> Пик: все хабы заняты на
+              99%</label
+            >
+            <label
+              >Первый рейс смены
+              <select id="incident">
+                <option value="none">Штатный</option>
+                <option value="return">Возврат одной коробки</option>
+                <option value="error">Пересорт одной коробки</option>
+              </select></label
+            >
+            <h3>Хранение запаса продавца</h3>
+            <select id="stockPoint"></select>
+            <button data-stock="receive">Принять 10</button
+            ><button data-stock="sell">Продать 2</button
+            ><button data-stock="day">+ сутки</button>
+            <p id="stockStatus"></p>
+            <small
+              >3 ₽ за единицу в сутки. Запас уменьшает доступную полку. Этот
+              договор хранения учитывается отдельно от перевозки.</small
+            >
+          </section>
+          <div class="cost-card" id="costSplitCard"></div>
+        </div>
+      </aside>
+
+      <main class="map-wrap">
+        <div id="map"></div>
+
+        <div class="map-top-bar">
+          <div class="map-legend-box">
+            <div class="road-legend">
+              <span
+                ><i class="classic-line line-sample"></i>Без гибрида: СЦ 1
+                (Медведево) → СЦ 2 → Конечный ПВЗ</span
+              >
+              <span
+                ><i class="hybrid-line line-sample"></i>Гибрид: СЦ 1 (Медведево)
+                → Гибридный ПВЗ-склад → Конечный ПВЗ</span
+              >
+            </div>
+            <div class="muted-note">
+              <strong>СЦ 1</strong> — начальный у Медведево (Р173);
+              <strong>СЦ 2</strong> — промежуточный между Медведево и началом
+              города (Руэм); <strong>СКЛ</strong> — гибридный ПВЗ-склад;
+              <strong>КОН</strong> — конечный ПВЗ.
+            </div>
+          </div>
+
+          <div class="layer-box">
+            <button class="layer-btn active" id="btnVec">Карта</button>
+            <button class="layer-btn" id="btnSat">Спутник</button>
+          </div>
+        </div>
+      </main>
+    </div>
+
+    <div class="modal-backdrop" id="summaryModal">
+      <div class="modal-card">
+        <div class="summary-heading">
+          <h3 class="summary-title">
+            Сводка и сравнение: СЦ 1 → СЦ 2 vs Гибридный ПВЗ-склад
+          </h3>
+          <button class="close-modal-btn">Закрыть</button>
+        </div>
+
+        <div class="summary-metrics metrics-grid" id="summaryTopKpis"></div>
+        <table class="summary-table" id="summaryTable">
+          <thead>
+            <tr>
+              <th>Схема</th>
+              <th>Узлы</th>
+              <th>Тариф / заказ</th>
+              <th>К оплате / заказ</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Плавающая кнопка в правом нижнем углу и выезжающее боковое меню с инфографикой -->
+    <button class="drawer-fab" id="drawerFab">
+      <span>📈 Инфографика и расходы</span>
+      <span class="fab-pill" id="fabBadge">Сводка</span>
+    </button>
+
+    <aside
+      class="analytics-drawer"
+      id="analyticsDrawer"
+      aria-label="Аналитическая сводка"
+    >
+      <div class="drawer-header">
+        <div>
+          <h3>Аналитика: деньги, время и издержки</h3>
+          <p id="drawerSubtitle">
+            Сравнение «СЦ 1 → СЦ 2» и «Гибридный ПВЗ-склад»
+          </p>
+        </div>
+        <button class="drawer-close" title="Свернуть">✕</button>
+      </div>
+      <div class="drawer-body" id="drawerBodyContent"></div>
+    </aside>
+
+    <template id="map-credit"
+      >©
+      <a href="https://www.openstreetmap.org/copyright"
+        >OpenStreetMap contributors</a
+      >
+      · ODbL</template
+    >
+    <template id="economics-view"
+      ><div class="cost-scroll">
+        <table class="summary-table">
+          <thead>
+            <tr>
+              <th>На заказ</th>
+              <th>Через СЦ 2</th>
+              <th>Гибрид¹</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <small
+        >¹ При отказе хаба применён тариф классики. В межгороде сохранён СЦ
+        Чебоксар. Учебные ставки: выход 160 ₽, 18 ₽/км, 1,5 ₽/мин; постоянный
+        бюджет СЦ 4 800 ₽ на смену во всех схемах включён в итог смены. Таблица
+        на заказ показывает вклад до этого расхода.</small
+      ></template
+    >
+    <template id="shift-view"
+      ><section class="recommendation">
+        <small>Рекомендация по итогу смены</small>
+        <h3></h3>
+        <p></p>
+        <div>
+          <span data-result="direct"></span><br /><span
+            data-result="hybrid"
+          ></span>
+        </div>
+      </section>
+      <table class="summary-table">
+        <thead>
+          <tr>
+            <th>Смена 8 ч</th>
+            <th>Спрос</th>
+            <th>Выдано / возвраты</th>
+            <th>Не вывезено</th>
+            <th>Остаток WB</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <p>
+        Допуск рейса — машина успевает вернуться до конца смены. Невывезенный
+        спрос переносится. Возвраты сторнируют выручку, расходы исправления
+        оплачивает WB.
+      </p></template
+    >
+  </body>
 </html>
