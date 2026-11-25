@@ -1,0 +1,15 @@
+{
+  "orders": 3500,
+  "active": 24,
+  "vans": 25,
+  "capacity": 35,
+  "profile": "peak",
+  "selection": "near",
+  "metric": "time",
+  "seed": 1701,
+  "staff": 3,
+  "shelf": 1400,
+  "visits": 160,
+  "traffic": 1.5,
+  "interval": 40
+}

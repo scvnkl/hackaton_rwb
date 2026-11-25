@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ru">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <link rel="icon" href="data:," />
+    <title>Mesh Atlas — городская логистика</title>
+    <link rel="stylesheet" href="vendor/leaflet.css" />
+    <link rel="stylesheet" href="app.css" />
+  </head>
+  <body>
+    <header>
+      <div class="brandmark">⌁</div>
+      <div class="brand">Mesh<span>Atlas</span></div>
+      <span class="vline"></span
+      ><span class="product">Лаборатория городской логистики</span
+      ><button id="cityButton">
+        ⌖ &nbsp; <span id="cityLabel">Выбор города</span> &nbsp;⌄
+      </button>
+    </header>
+    <main>
+      <div class="intro">
+        <div>
+          <div class="kicker">ТРАНСПОРТНАЯ МОДЕЛЬ</div>
+          <h1 id="headline">Загрузка города…</h1>
+        </div>
+        <div class="introRight">
+          <span class="small" id="info"></span
+          ><button id="sourceButton">Источники ↗</button>
+        </div>
+      </div>
+      <div class="workspace">
+        <section class="atlas">
+          <div class="mapbar">
+            <strong>Карта перевозок</strong>
+            <div class="modes" id="modes"></div>
+          </div>
+          <div id="map"></div>
+          <div class="play">
+            <button id="play" aria-label="Воспроизвести">▶</button
+            ><b id="timeLabel">08:00</b
+            ><input
+              type="range"
+              id="time"
+              min="0"
+              max="1"
+              value="0"
+              aria-label="Модельное время"
+            /><button id="fit" title="Показать весь выбранный рейс">
+              Весь рейс ↗
+            </button>
+          </div>
+        </section>
+        <aside>
+          <div class="asideTitle">
+            <span class="kicker">ЭКСПЕРИМЕНТ</span>
+            <h2>Параметры дня</h2>
+          </div>
+          <form id="settings">
+            <label
+              >Профиль спроса<select id="profile">
+                <option value="day">Рабочий день</option>
+                <option value="peak">Вечерняя нагрузка</option>
+                <option value="return">Покупки с возвратами</option>
+                <option value="stock">Долгое хранение</option>
+              </select></label
+            >
+            <div class="pair">
+              <label
+                >Заказов за день<input
+                  id="orders"
+                  type="number"
+                  min="1"
+                  value="1200"
+                  required /></label
+              ><label
+                >Активных ПВЗ<input
+                  id="active"
+                  type="number"
+                  min="2"
+                  value="12"
+                  required /></label
+              ><label
+                >Машин<input
+                  id="vans"
+                  type="number"
+                  min="1"
+                  value="16"
+                  required /></label
+              ><label
+                >Заказов в машине<input
+                  id="capacity"
+                  type="number"
+                  min="1"
+                  value="35"
+                  required
+              /></label>
+            </div>
+            <label>Базовый склад<select id="hub"></select></label>
+            <details>
+              <summary>Условия и тарифы</summary>
+              <div class="pair" id="extras"></div>
+              <label
+                >Объём спроса задан<select id="volumeUnit">
+                  <option value="city">На весь эксперимент</option>
+                  <option value="point">На каждый активный ПВЗ</option>
+                </select></label
+              ><label
+                >Маршрутизация по дорогам<select id="metric">
+                  <option value="time">Минимум времени</option>
+                  <option value="distance">Минимум километров</option>
+                </select></label
+              ><label
+                >Выбор активных точек<select id="selection">
+                  <option value="spread">Равномерно по городу</option>
+                  <option value="near">Ближайшие к складу</option>
+                  <option value="random">Случайная выборка по seed</option>
+                </select></label
+              ><label
+                >Сеть ПВЗ<select id="brand">
+                  <option value="">Все операторы</option>
+                  <option>Wildberries</option>
+                  <option>Ozon</option>
+                </select></label
+              ><label
+                >Перекрыть участок улицы<select id="closure">
+                  <option value="0">Все открыты</option>
+                </select></label
+              ><button type="button" id="importProfile">
+                Загрузить сценарий JSON</button
+              ><input hidden id="scenarioFile" type="file" accept=".json" />
+            </details>
+            <button class="primary" id="run">
+              ▶ &nbsp; Сравнить стратегии
+            </button>
+            <div id="status" role="status">Подготавливаем дорожный граф…</div>
+          </form>
+        </aside>
+      </div>
+      <section class="results">
+        <div class="sectionHead">
+          <div>
+            <div class="kicker">ОДИН СПРОС · ТРИ ПОЛИТИКИ</div>
+            <h2>Сравнение стратегий</h2>
+          </div>
+          <button id="export">Скачать результаты ↓</button>
+        </div>
+        <div id="cards"></div>
+      </section>
+      <section class="bottom">
+        <div class="box">
+          <div class="sectionHead">
+            <h2>Диспетчерская</h2>
+            <label
+              >Рейс №<input id="trip" type="number" min="1" value="1"
+            /></label>
+          </div>
+          <div id="tripInfo"></div>
+          <div class="sectionHead">
+            <h3>Заказ и начисления</h3>
+            <input
+              type="number"
+              id="order"
+              min="1"
+              value="1"
+              aria-label="Номер заказа"
+            />
+          </div>
+          <div id="orderInfo"></div>
+        </div>
+        <div class="box">
+          <h2>Точки сети</h2>
+          <input id="pointSearch" placeholder="Название, адрес или оператор" />
+          <div id="points"></div>
+        </div>
+      </section>
+    </main>
+    <dialog id="cityDialog">
+      <div class="sectionHead">
+        <h2>Выбор города</h2>
+        <button class="close" aria-label="Закрыть">×</button>
+      </div>
+      <div id="builtins"></div>
+      <button id="geoImport">Дополнить текущий город точками GeoJSON</button
+      ><input hidden id="geoFile" type="file" accept=".json,.geojson" /><small
+        id="geoStatus"
+      ></small>
+      <h3>Загрузить другую территорию</h3>
+      <form id="citySearch">
+        <label
+          >Город или координаты центра<input
+            id="query"
+            placeholder="Например, Казань или 55.79, 49.12"
+            required /></label
+        ><label
+          >Радиус области<select id="radius">
+            <option value="city">Весь охват города по геокодеру</option>
+            <option value="3">3 км</option>
+            <option value="6" selected>6 км</option>
+            <option value="12">12 км</option>
+            <option value="25">25 км</option>
+          </select></label
+        ><button class="primary">Найти город</button>
+      </form>
+      <div id="searchResults" role="status"></div>
+    </dialog>
+    <dialog id="sourceDialog">
+      <div class="sectionHead">
+        <h2>Данные и допущения</h2>
+        <button class="close">×</button>
+      </div>
+      <div id="sources"></div>
+    </dialog>
+    <script src="vendor/leaflet.js"></script>
+    <script src="network.js"></script>
+    <script src="simulation.js"></script>
+    <script src="map.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
