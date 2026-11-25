@@ -13,16 +13,18 @@
       <div class="brandmark">⌁</div>
       <div class="brand">Mesh<span>Atlas</span></div>
       <span class="vline"></span
-      ><span class="product">Лаборатория городской логистики</span
-      ><button id="cityButton">
+      ><span class="product">Рабочее место диспетчера</span
+      ><a href="pvz-wb-live-simulator-v2.html" style="color:inherit">Живая доставка ↗</a>
+      <button id="cityButton">
         ⌖ &nbsp; <span id="cityLabel">Выбор города</span> &nbsp;⌄
       </button>
     </header>
     <main>
       <div class="intro">
         <div>
-          <div class="kicker">ТРАНСПОРТНАЯ МОДЕЛЬ</div>
+          <div class="kicker">СИМУЛЯТОР ПОТОКА ЗАКАЗОВ</div>
           <h1 id="headline">Загрузка города…</h1>
+          <p class="roleHint">Задайте поток и сравните время, цену для покупателя и расходы маркетплейса на одних заказах.</p>
         </div>
         <div class="introRight">
           <span class="small" id="info"></span
@@ -54,7 +56,8 @@
         <aside>
           <div class="asideTitle">
             <span class="kicker">ЭКСПЕРИМЕНТ</span>
-            <h2>Параметры дня</h2>
+            <h2>Параметры смены</h2>
+            <button type="button" id="pilot">Запустить пилот в одном районе</button>
           </div>
           <form id="settings">
             <label
@@ -96,7 +99,11 @@
                   required
               /></label>
             </div>
-            <label>Базовый склад<select id="hub"></select></label>
+            <div class="pair">
+              <label>Габаритные, %<input id="bulkyShare" type="number" value="12" min="0" max="100" required></label>
+              <label>Согласны доплатить, %<input id="consentShare" type="number" value="50" min="0" max="100" required></label>
+            </div>
+            <label>Базовый СЦ<select id="hub"></select></label>
             <details>
               <summary>Условия и тарифы</summary>
               <div class="pair" id="extras"></div>
@@ -113,6 +120,7 @@
               ><label
                 >Выбор активных точек<select id="selection">
                   <option value="spread">Равномерно по городу</option>
+                  <option value="cluster">Соседние ПВЗ одного района</option>
                   <option value="near">Ближайшие к складу</option>
                   <option value="random">Случайная выборка по seed</option>
                 </select></label
@@ -146,6 +154,8 @@
           <button id="export">Скачать результаты ↓</button>
         </div>
         <div id="cards"></div>
+        <div id="balance" aria-live="polite"></div>
+        <div id="sizeResults"></div>
       </section>
       <section class="bottom">
         <div class="box">
@@ -166,10 +176,12 @@
               aria-label="Номер заказа"
             />
           </div>
+          <label>Пример заказа<select id="sample"><option value="">По номеру</option></select></label>
           <div id="orderInfo"></div>
         </div>
         <div class="box">
           <h2>Точки сети</h2>
+          <label for="pointView">Показать точки</label><select id="pointView"><option value="active">Участвующие в смене</option><option value="busy">Пик заполнения от 80%</option><option value="all">Весь каталог</option></select>
           <input id="pointSearch" placeholder="Название, адрес или оператор" />
           <div id="points"></div>
         </div>
@@ -204,6 +216,11 @@
       </form>
       <div id="searchResults" role="status"></div>
     </dialog>
+    <dialog id="yandexDialog">
+      <div class="sectionHead"><h2 id="yaTitle">ПВЗ на Яндекс Картах</h2><button class="close" aria-label="Закрыть">×</button></div>
+      <form id="yaForm" hidden><label>Ключ JavaScript API Яндекс Карт<input id="yaKey" type="password" autocomplete="off"></label><button>Открыть карту</button></form>
+      <p id="yaStatus" role="status"></p><div id="yaMap"></div>
+    </dialog>
     <dialog id="sourceDialog">
       <div class="sectionHead">
         <h2>Данные и допущения</h2>
@@ -216,5 +233,6 @@
     <script src="simulation.js"></script>
     <script src="map.js"></script>
     <script src="app.js"></script>
+    <script src="yandex.js"></script>
   </body>
 </html>

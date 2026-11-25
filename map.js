@@ -24,7 +24,7 @@ L.control
 const legend = L.control({ position: "bottomleft" });
 legend.onAdd = () => {
   let el = L.DomUtil.create("div", "maplegend");
-  el.innerHTML = "<b>●</b> ПВЗ &nbsp; ◆ Склад &nbsp; ━ Груз &nbsp; ┄ Подача";
+  el.innerHTML = '<span style="color:#428268">●</span> до 50% &nbsp; <span style="color:#c18422">●</span> 50–80% &nbsp; <span style="color:#cb5646">●</span> от 80% <br>◆ СЦ &nbsp; ━ Груз &nbsp; ┄ Подача';
   return el;
 };
 legend.addTo(map);
@@ -240,7 +240,7 @@ function networkPins(ps, active, selected) {
         stateForPoint(p) +
         '<br><a target="_blank" rel="noopener" href="' +
         esc(safeUrl(p.url)) +
-        '">Карточка источника ↗</a>',
+        '">Карточка источника ↗</a> · <button type="button" data-yandex="' + esc(p.id) + '">Яндекс Карты ↗</button>',
     );
     marker.addTo(markers);
     markerById.set(p.id, marker);
