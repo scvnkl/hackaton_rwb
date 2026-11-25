@@ -75,12 +75,13 @@ function workerMain() {
           );
         net.metric = s.metric;
         let picks;
-        if (s.selection === "near") {
+        if (s.selection === "near" || s.selection === "cluster") {
+          const centre = s.selection === "near" ? hub : pool[0];
           picks = pool
             .sort(
               (a, b) =>
-                distance([a.lat, a.lon], [hub.lat, hub.lon]) -
-                distance([b.lat, b.lon], [hub.lat, hub.lon]),
+                distance([a.lat, a.lon], [centre.lat, centre.lon]) -
+                distance([b.lat, b.lon], [centre.lat, centre.lon]),
             )
             .slice(0, s.active);
         } else if (s.selection === "random") {
@@ -108,6 +109,26 @@ function workerMain() {
           outputs[key] = r;
           let { orders, trips: all, ...rest } = r;
           metrics[key] = rest;
+          let paired = 0, saving = 0;
+          for (const o of orders) {
+            const baseline = outputs.hub.orders[o.id - 1];
+            if (baseline.issued == null || o.issued == null) continue;
+            paired++;
+            saving += (baseline.cost - baseline.buyer) - (o.cost - o.buyer);
+          }
+          metrics[key].paired = paired;
+          metrics[key].saving = saving;
+          metrics[key].examples = Object.fromEntries([
+            ["Малая", orders.find(o => o.parcel === "Малая" && o.issued != null)],
+            ["Средняя", orders.find(o => o.parcel === "Средняя" && o.issued != null)],
+            ["Габаритная через СЦ", orders.find(o => o.bulky && o.policy === "Через СЦ" && o.issued != null)],
+            ["Габаритная с доплатой", orders.find(o => o.premiumPaid > 0)],
+            ["Экономия на прямом рейсе", orders.find(o => {
+              const base = outputs.hub.orders[o.id - 1];
+              return o.policy === "ПВЗ → ПВЗ" && o.issued != null && base.issued != null &&
+                o.cost - o.buyer < base.cost - base.buyer;
+            })],
+          ].filter(([,o]) => o).map(([title,o]) => [title,o.id]));
           trips[key] = all;
           for (const trip of all)
             for (const [a, b] of [
@@ -134,7 +155,14 @@ function workerMain() {
       }
       if (m.type === "order" && m.id === generation) {
         let o = outputs[m.mode]?.orders[m.index - 1];
-        if (o) postMessage({ type: "order", order: o, mode: m.mode, id: m.id });
+        if (o) {
+          const comparison = Object.entries(outputs).map(([key, result]) => {
+            const alt = result.orders[m.index - 1];
+            return { key, price: alt.buyer, minutes: alt.issued == null ? null : alt.issued - alt.t,
+              net: alt.cost - alt.buyer, status: alt.status };
+          });
+          postMessage({ type: "order", order: o, comparison, mode: m.mode, id: m.id });
+        }
       }
     } catch (ex) {
       postMessage({ type: "error", message: ex.message });
@@ -180,6 +208,8 @@ function startWorker(d) {
   lines.clearLayers();
   vehicles.clearLayers();
   $("cards").innerHTML = "";
+  $("balance").textContent = "";
+  $("sizeResults").textContent = "";
   $("points").innerHTML = "";
   $("tripInfo").textContent = "";
   $("orderInfo").textContent = "";
@@ -282,7 +312,7 @@ function startWorker(d) {
       m.id === runId &&
       m.order.id === Number($("order").value)
     )
-      renderOrder(m.order);
+      renderOrder(m.order, m.comparison);
   };
   worker.postMessage({ type: "init", data: d });
 }
@@ -316,6 +346,11 @@ const controls = [
   ["launch", "Выход на рейс, ₽", 240, 0, 1],
   ["perKm", "Стоимость км, ₽", 24, 0, 0.1],
   ["tariff", "Плата ПВЗ, ₽", 18, 0, 0.1],
+  ["premium", "Доплата за габарит, ₽", 120, 0, 1],
+  ["storageRate", "Полка, ₽/л в сутки", 0.12, 0, 0.01],
+  ["spaceRate", "Расход ПВЗ, ₽/л в сутки", 0.06, 0, 0.01],
+  ["sortRate", "Обработка СЦ, ₽/шт.", 32, 0, 0.1],
+  ["vanLitres", "Объём кузова, л", 1200, 68, 1],
   ["traffic", "Множитель времени", 1.25, 0.1, 0.05],
 ];
 $("extras").innerHTML = controls
@@ -342,6 +377,7 @@ function run() {
     "active",
     "vans",
     "capacity",
+    "bulkyShare", "consentShare",
     ...controls.map((i) => i[0]),
   ]) {
     p[id] = Number($(id).value);
@@ -365,6 +401,15 @@ function run() {
   $("status").textContent = "Готовим общий поток…";
   worker.postMessage({ type: "run", id: ++runId, settings: p });
 }
+$("pilot").onclick = () => {
+  if ($("run").disabled) return;
+  for (const [id,,value] of controls) $(id).value = value;
+  const preset = { active: 3, orders: 1000, vans: 12, capacity: 35, shelf: 3500,
+    visits: 30, interval: 60, profile: "day", selection: "cluster", metric: "time",
+    closure: 0, volumeUnit: "city", bulkyShare: 12, consentShare: 50 };
+  for (const [id,value] of Object.entries(preset)) $(id).value = value;
+  run();
+};
 $("settings").onsubmit = (e) => {
   e.preventDefault();
   run();
@@ -412,11 +457,35 @@ function showMode(k, fit) {
   document
     .querySelectorAll("[data-mode]")
     .forEach((b) => (b.onclick = () => showMode(b.dataset.mode, true)));
+  const r = summary.metrics[mode];
+  const net = r.cost - r.buyer;
+  $("balance").innerHTML = [
+    ["Расходы МП после оплаты", rub(net)],
+    ["Маржа МП²", rub(r.commission - net)],
+    ["Экономия к СЦ¹", rub(r.saving)],
+    ["Время посылок в СЦ", ru(r.hubMinutes / 60, 1) + " посылко-ч"],
+    ["Выплаты грузчикам", rub(r.loaders)],
+    ["Заказы через ПВЗ", ru(r.local)],
+  ].map(([label,value]) => '<div><small>'+label+'</small><b>'+value+'</b></div>').join("") +
+    '<p>¹ Разница расходов после оплаты по '+ru(r.paired)+' заказам, выданным в обеих схемах. Отрицательное значение — перерасход. ² Комиссия и оплата доставки минус расходы прогона, до постоянных затрат.</p>';
+  const sizeRows = ["Малая", "Средняя", "Габаритная"].filter(size => r.bySize[size]);
+  $("sizeResults").innerHTML = '<table class="compare"><caption>'+STRATEGIES[mode]+
+    ' · результаты по размеру</caption><thead><tr><th>Посылка</th><th>Выдано / спрос</th><th>До выдачи</th><th>Цена за выданную¹</th><th>Расход МП на исходную²</th></tr></thead><tbody>' +
+    sizeRows.map(size => {
+      const row = r.bySize[size];
+      return '<tr><td>'+size+'</td><td>'+ru(row.issued)+' / '+ru(row.orders)+'</td><td>'+
+        (row.issued ? ru(row.minutes/row.issued)+' мин' : '—')+'</td><td>'+
+        (row.issued ? rub(row.buyer/row.issued) : '—')+'</td><td>'+rub((row.cost-row.buyer)/row.orders)+'</td></tr>';
+    }).join("")+'</tbody></table><small>¹ Средняя оплата покупателя после возвратов. ² После оплаты покупателем.</small>';
+  $("sample").innerHTML = '<option value="">По номеру</option>' +
+    Object.entries(r.examples).map(([label,id]) => '<option value="'+id+'">'+label+' · №'+id+'</option>').join("");
+  listPoints();
   const all = summary.trips[mode];
   $("trip").max = all.length;
   $("trip").value = 1;
   $("time").max = Math.ceil(summary.metrics[mode].end);
   selectTrip(0, fit);
+  if (!all.length) setTime(0);
   requestOrder();
 }
 function withGeom(trip) {
@@ -447,7 +516,7 @@ function selectTrip(index, fit) {
     ru(trip.km, 1) +
     " км с подачей</span><span>" +
     trip.count +
-    " заказов</span><span>" +
+    " заказов · " + ru(trip.litres,1) + " л</span><span>" +
     rub(trip.cost) +
     "</span></div>Подача " +
     tm(trip.arrive) +
@@ -468,7 +537,7 @@ function requestOrder() {
       id: runId,
     });
 }
-function renderOrder(o) {
+function renderOrder(o, comparison) {
   let name = (id) => esc(shortName(byId.get(id)));
   $("orderInfo").innerHTML =
     '<div class="details"><b>' +
@@ -491,6 +560,13 @@ function renderOrder(o) {
         (o.estimates[1] === null ? "недоступен" : rub(o.estimates[1])) +
         ".<br>"
       : "") +
+    '<p><b>' + esc(o.parcel) + '</b> · ' + o.dimensions.join(' × ') + ' см · ' + ru(o.volume,1) + ' л · ' + o.kg + ' кг</p>' +
+    '<p>'+esc(o.reason || o.status)+'</p><p>Оплата покупателя '+rub(o.buyer)+' · полка '+ru(o.storagePayment,2)+' ₽ · обработка ПВЗ '+rub(o.processingPayment || 0)+' · расходы полки '+ru(o.spaceCost,2)+' ₽ · обработка СЦ '+rub(o.sorting)+' · хранение в СЦ '+ru(o.hubHolding || 0,2)+' ₽.</p>' +
+    (o.prices ? '<p>Цена доставки при выборе: ПВЗ '+(o.prices[0] == null ? '—' : rub(o.prices[0]))+' · СЦ '+(o.prices[1] == null ? '—' : rub(o.prices[1]))+'</p>' : '') +
+    (o.premiumPaid ? '<p>Доплата '+rub(o.premiumPaid)+' при выдаче: ПВЗ '+rub(o.premiumPVZ)+' · грузчикам '+rub(o.loaders)+' · доля МП '+rub(o.premiumMP)+'.</p>' : '') +
+    '<table class="compare"><caption>Тот же заказ в трёх прогонах</caption><tr><th>Схема</th><th>До выдачи</th><th>Покупатель</th><th>Расход МП¹</th></tr>' +
+    comparison.map(v => '<tr><td>'+STRATEGIES[v.key]+'</td><td>'+(v.minutes === null ? esc(v.status) : ru(v.minutes)+' мин')+'</td><td>'+rub(v.price)+'</td><td>'+rub(v.net)+'</td></tr>').join('') +
+    '</table><small>¹ После оплаты доставки покупателем.</small><p>' +
     o.history.map(([t, msg]) => tm(t) + " " + esc(msg)).join(" · ") +
     "<p>" +
     o.legs
@@ -510,7 +586,10 @@ function renderOrder(o) {
       (b) => (b.onclick = () => selectTrip(Number(b.dataset.trip) - 1, true)),
     );
 }
-$("order").onchange = requestOrder;
+$("order").onchange = () => { $("sample").value = ""; requestOrder(); };
+$("sample").onchange = () => {
+  if ($("sample").value) { $("order").value = $("sample").value; requestOrder(); }
+};
 $("trip").onchange = () => {
   if (summary) selectTrip(Number($("trip").value) - 1, true);
 };
@@ -521,6 +600,12 @@ function setTime(t) {
   truckAt(data, curTrip, t);
   if (map._popup) map._popup.update();
   if (summary) {
+    for (const node of summary.metrics[mode].nodes) {
+      if (!node.neighbour) continue;
+      const ratio = valueAtClock(node.stockHistory || []) / lastSettings.shelf;
+      const fillColor = ratio >= 0.8 ? "#cb5646" : ratio >= 0.5 ? "#c18422" : "#428268";
+      markerById.get(node.id)?.setStyle({fillColor});
+    }
     for (const trip of summary.trips[mode]) {
       if (trip.id === curTrip?.id || trip.start > t || trip.end < t) continue;
       truckAt(data, withGeom(trip), t, false);
@@ -548,10 +633,7 @@ $("fit").onclick = () => {
     setTime(curTrip.leave);
   }
 };
-function stateForPoint(p) {
-  let n = summary?.metrics[mode].nodes.find((x) => x.id === p.id);
-  if (!n) return "";
-  const last = (list) => {
+function valueAtClock(list) {
     let lo = 0,
       hi = list.length;
     while (lo < hi) {
@@ -560,41 +642,56 @@ function stateForPoint(p) {
       else hi = mid;
     }
     return lo ? list[lo - 1][1] : 0;
-  };
+}
+function stateForPoint(p) {
+  let n = summary?.metrics[mode].nodes.find((x) => x.id === p.id);
+  if (!n) return "";
+  const stock = valueAtClock(n.stockHistory || []);
+  let alternative;
+  if (n.neighbour && stock >= 0.8 * lastSettings.shelf) {
+    alternative = summary.metrics[mode].nodes.filter(other => other.neighbour &&
+      other.id !== p.id && valueAtClock(other.stockHistory || []) < 0.8 * lastSettings.shelf)
+      .map(other => byId.get(other.id)).sort((a,b) =>
+        distance([p.lat,p.lon],[a.lat,a.lon]) - distance([p.lat,p.lon],[b.lat,b.lon]))[0];
+  }
   return (
+    (alternative ? '<br><button data-near="'+esc(alternative.id)+'">Свободнее рядом · '+esc(alternative.address || alternative.name)+'</button>' : '') +
+    (n.neighbour ? "<br>Ближайший активный ПВЗ: " + esc(shortName(byId.get(n.neighbour))) +
+      " · " + ru(n.metres / 1000,2) + " км по прямой<br>Фон: " + n.visits + " посещений/день" : "") +
     "<br><b>" +
     tm(clock) +
     "</b> · остаток " +
-    ru(last(n.stockHistory || [])) +
+    ru(valueAtClock(n.stockHistory || [])) +
     " л · ожидают " +
-    last(n.queueHistory || []) +
+    valueAtClock(n.queueHistory || []) +
     "<br>Пик за прогон " +
     ru(n.max) +
     " л · максимальное ожидание " +
     ru(n.peakWait) +
-    " мин"
+    " мин<br>Начислено за смену " + rub(n.partnerIncome) + " · результат точки " + rub(n.partnerIncome - n.partnerCost)
   );
 }
 function listPoints() {
   let q = $("pointSearch").value.toLowerCase();
-  let matches = points.filter((p) =>
-    (p.name + " " + p.address + " " + p.operator).toLowerCase().includes(q),
-  );
-  $("points").innerHTML = matches
-    .map(
-      (p) =>
-        '<button class="point" data-id="' +
-        esc(p.id) +
-        '">' +
-        esc(shortName(p)) +
-        "<small>" +
-        esc(p.role === "hub" ? "Складской объект" : "ПВЗ") +
-        " · " +
-        (p.url.includes("openstreetmap") ? "OpenStreetMap" : "Каталог точек") +
-        "</small></button>",
-    )
-    .join("");
+  const nodes = new Map((summary?.metrics[mode].nodes || []).map(n => [n.id,n]));
+  const filter = $("pointView").value;
+  const matches = points.filter(p => {
+    const n = nodes.get(p.id);
+    if (summary && filter !== "all" && !n?.neighbour) return false;
+    if (filter === "busy" && !(n?.max >= 0.8 * lastSettings?.shelf)) return false;
+    return (p.name + " " + p.address + " " + p.operator).toLowerCase().includes(q);
+  });
+  $("points").innerHTML = matches.map(p => {
+    const n = nodes.get(p.id);
+    const peak = n?.neighbour ? Math.round(n.max / lastSettings.shelf * 100) : null;
+    const status = peak === null ? "" : '<span class="load '+(peak >= 80 ? "hot" : "calm")+'">Пик '+peak+'%</span>';
+    return '<button class="point" data-id="'+esc(p.id)+'">'+status+esc(shortName(p))+
+      '<small>'+esc(p.role === "hub" ? "Складской объект" : "ПВЗ")+
+      (n?.neighbour ? ' · до соседа '+ru(n.metres / 1000,2)+' км · '+n.visits+' посещений/день' : '')+
+      '</small></button>';
+  }).join("") || '<small>Подходящих точек нет.</small>';
 }
+$("pointView").onchange = listPoints;
 $("pointSearch").oninput = listPoints;
 $("points").onclick = (e) => {
   let b = e.target.closest("[data-id]");
@@ -603,6 +700,13 @@ $("points").onclick = (e) => {
   map.setView([p.lat, p.lon], 16);
   markerById.get(p.id)?.openPopup();
 };
+$("map").addEventListener("click", e => {
+  const button = e.target.closest("[data-near]");
+  if (!button) return;
+  const p = byId.get(button.dataset.near);
+  map.setView([p.lat,p.lon], 16);
+  markerById.get(p.id)?.openPopup();
+});
 function saveFile(name, text, type) {
   let url = URL.createObjectURL(new Blob([text], { type })),
     a = document.createElement("a");
@@ -704,7 +808,7 @@ $("sourceButton").onclick = () => {
     esc(data.date) +
     " · " +
     ru(data.roads.length) +
-    ' участков дорог. Используются автомобильные рёбра, одностороннее движение и поддерживаемые запреты поворота OSM через узел.</p><p><a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap / ODbL</a> · <a href="https://download.openstreetmap.fr/extracts/" target="_blank">Региональные выгрузки</a> · <a href="https://punkty-vydachi.ru/" target="_blank">Каталог ПВЗ</a>. Ссылка на исходную карточку доступна у каждого объекта.</p><p>Склад OSM означает здание или объект с соответствующим тегом. Оператор, пригодность для маркетплейса и актуальная загрузка требуют подтверждения. Выбранный склад играет роль хаба в эксперименте.</p><p>Спрос, очередь, запасы и тарифы моделируются. Время в пути рассчитано по классу улицы, ограничению скорости и множителю трафика. Привязка к ближайшему узлу сети — до 700 м. Путь от ворот до этого узла не тарифицируется.</p><p>Экономика: подача + километраж с холостым пробегом + 2 ₽ за минуту работы машины. Складская сортировка 32 ₽/заказ; выдача 8 ₽. Заказ на 850 ₽, комиссия 12%, закупка 495 ₽. Стоимость экспериментальной партии не включает постоянные расходы бизнеса.</p>';
+    ' участков дорог. Используются автомобильные рёбра, одностороннее движение и поддерживаемые запреты поворота OSM через узел.</p><p><a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap / ODbL</a> · <a href="https://download.openstreetmap.fr/extracts/" target="_blank">Региональные выгрузки</a> · <a href="https://punkty-vydachi.ru/" target="_blank">Каталог ПВЗ</a>. Ссылка на исходную карточку доступна у каждого объекта.</p><p>Склад OSM означает здание или объект с соответствующим тегом. Оператор, пригодность для маркетплейса и актуальная загрузка требуют подтверждения. Выбранный склад играет роль хаба в эксперименте.</p><p>Спрос, очередь, запасы и тарифы моделируются. Время в пути рассчитано по классу улицы, ограничению скорости и множителю трафика. Привязка к ближайшему узлу сети — до 700 м. Путь от ворот до этого узла не тарифицируется.</p><p>Экономика: подача + километраж с холостым пробегом + 2 ₽ за минуту работы машины. Обработка СЦ: база + 0,16 ₽/л, хранение 0,001 ₽/л в минуту до выезда. Выдача 8 ₽. Ставки пилотные. Заказ на 850 ₽, комиссия 12%, закупка 495 ₽. Покупатель оплачивает 35% прогнозных расходов, округлённых до рубля. Доплата за габарит распределяется при выдаче: 35% ПВЗ, 40% грузчикам, остаток МП. При возврате оплата возвращается, выполненная работа остаётся расходом. Экономия СЦ означает снижение переменной обработки и занятого объёма. Постоянная зарплата, аренда и налоги вынесены за рамки сравнения.</p><p>Малая и средняя упаковки укладываются в консервативный допуск FBS (сторона &lt;80 см, сумма &lt;140 см, масса &lt;25 кг). Габаритная 90×30×25 см, 18 кг допускается к прямому плечу только как услуга пилота, по поручению и с согласием на доплату. Сектор обслуживания оценён по расстоянию до ближайшей активной точки при одинаковом штате. <a href="https://seller.wildberries.ru/instructions/ru/ru/material/A-207" target="_blank">Правила FBS</a> · <a href="https://point.wb.ru/api/v2/user/offer/1.html" target="_blank">Оферта ПВЗ</a>.</p>';
   $("sourceDialog").showModal();
 };
 $("geoImport").onclick = () => $("geoFile").click();
@@ -779,7 +883,7 @@ $("scenarioFile").onchange = async (e) => {
       "launch",
       "perKm",
       "tariff",
-      "traffic",
+      "traffic", "premium", "storageRate", "spaceRate", "sortRate", "vanLitres", "bulkyShare", "consentShare",
       "profile",
       "hub",
       "brand",
@@ -797,7 +901,7 @@ $("scenarioFile").onchange = async (e) => {
       } else if (
         typeof value !== "number" ||
         !Number.isFinite(value) ||
-        value < Number(el.min) ||
+        value < Number(el.min) || (el.max && value > Number(el.max)) ||
         ((el.step === "1" || !el.step) && !Number.isSafeInteger(value))
       )
         throw Error("Проверьте поле " + id);
