@@ -1123,6 +1123,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
 
 
 
+
   </head>
   <body>
     <header class="topbar">
@@ -151379,7 +151380,8 @@ class RoadGraph {
     const [lat, lon] = latlng;
     const cy = Math.floor(lat / this.cell), cx = Math.floor(lon / this.cell);
     let best = -1, bestM = Infinity;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+    const R = Math.max(1, Math.ceil(maxM / 280));
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++)
       for (const i of this.grid.get((cy + dy) + ":" + (cx + dx)) || []) {
         if (this.vname[i] < 0) continue;
         const m = haversineM(latlng, [this.lat[i], this.lon[i]]);
@@ -151616,14 +151618,19 @@ function prepareNetwork(key, catalog) {
 function humanizeNames(key, points){
   const graph = routerFor(key);
   const used = new Map();
+  const tidy = typeof tidyAddress === "function" ? tidyAddress : s => s;
   for (const p of points) {
     if (p.brand !== "wb" || p.label) continue;
-    const raw = /^(Вайлдберриз|Wildberries)\s*·/i.test(p.name) || /\d+\.\d+,\s*\d+\.\d+$/.test(p.name);
-    let label = p.name.replace(/^(Йошкар-Ола|Чебоксары|Казань|Москва),\s*/,"");
+    const raw = /^(Вайлдберриз|Wildberries)\s*·/i.test(p.name) || /\d+\.\d+,\s*\d+\.\d+$/.test(p.name) || /node\/|way\//.test(p.name);
+    let label = tidy(p.name.replace(/^(Йошкар-Ола|Чебоксары|Казань|Москва),\s*/,"").trim());
     if (raw) {
-      const street = graph?.streetNear(p.latlng);
-      label = street ? "у " + street.replace(/^улица /i,"ул. ") : "ПВЗ " + p.latlng.map(v=>v.toFixed(4)).join(", ");
+      // Пока адрес не пришёл из геокодера — ближайшая улица из графа, без координат.
+      p.needsAddress = true;
+      const street = graph?.streetNear(p.latlng, 900);
+      label = street ? tidy(street) + ", рядом" : "ПВЗ WB · адрес уточняется";
     }
+    p.baseLabel = label;
+    if (raw && typeof cachedAddress === "function" && cachedAddress(p)) label = p.address;
     const n = (used.get(label) || 0) + 1;
     used.set(label, n);
     p.label = n > 1 ? label + " (" + n + ")" : label;
@@ -151723,6 +151730,142 @@ function validateCatalog(input) {
     boundary:typeof input.boundary==="string"?input.boundary:undefined,
     source:typeof input.source==="string"&&input.source.trim()?input.source.trim():"Импорт команды",
     date:typeof input.date==="string"?input.date:"дата неизвестна"};
+}
+
+</script>
+<script>
+/* Адреса ПВЗ вместо координат.
+ * В справочниках OSM у многих точек нет адреса — только «Wildberries · node/…».
+ * 1) Мгновенно: ближайшая улица из офлайн-графа («у ул. Ленина»).
+ * 2) В фоне: обратное геокодирование Nominatim (резерв — Photon) → «ул. Ленина, 12».
+ * Ответы кешируются в браузере, поэтому повторный запуск и офлайн-показ видят адреса сразу.
+ * Порядок: конечный ПВЗ и хабы → точка под курсором → видимые на карте. Не чаще 1 запроса/с. */
+const GEO_CACHE_KEY = "wb-sim.addr.v1";
+let geoCache = {};
+try { geoCache = JSON.parse(localStorage.getItem(GEO_CACHE_KEY) || "{}"); } catch { geoCache = {}; }
+const geoQueue = [];
+const geoQueued = new Set();
+let geoBusy = false, geoOffline = false, geoRefreshTimer = 0;
+const geoKey = p => p.latlng[0].toFixed(5) + "," + p.latlng[1].toFixed(5);
+
+const shortStreet = s => s
+  .replace(/Проспект/g, "проспект").replace(/Улица/g, "улица")
+  .replace(/^улица\s+(.+)$/i, "ул. $1").replace(/\s+улица$/i, " ул.")
+  .replace(/^проспект\s+/i, "пр-т ").replace(/\s+проспект$/i, " пр-т")
+  .replace(/^переулок\s+/i, "пер. ").replace(/\s+переулок$/i, " пер.")
+  .replace(/^бульвар\s+/i, "б-р ").replace(/\s+бульвар$/i, " б-р")
+  .replace(/^шоссе\s+/i, "ш. ").replace(/\s+шоссе$/i, " ш.")
+  .replace(/^площадь\s+/i, "пл. ").replace(/\s+площадь$/i, " пл.");
+
+// «Западная улица 23А» → «Западная ул., 23А»
+function tidyAddress(text) {
+  const m = text.match(/^(.*?)[,\s]+(\d+[0-9A-Za-zА-Яа-я\/-]*(?:\s*(?:к|корп\.?|стр\.?|с)\s*\d+)?)$/);
+  return m ? shortStreet(m[1].trim()) + ", " + m[2] : shortStreet(text);
+}
+
+function applyAddress(p, address) {
+  if (!address) return false;
+  p.address = address;
+  p.label = address;
+  p.needsAddress = false;
+  return true;
+}
+
+function cachedAddress(p) {
+  const hit = geoCache[geoKey(p)];
+  return hit ? applyAddress(p, hit) : false;
+}
+
+function requestAddress(p, urgent = false) {
+  if (!p || !p.needsAddress || geoOffline) return;
+  if (cachedAddress(p)) return scheduleAddressRefresh();
+  if (geoQueued.has(p.id)) {
+    if (urgent) { const i = geoQueue.indexOf(p); if (i > 0) { geoQueue.splice(i, 1); geoQueue.unshift(p); } }
+    return;
+  }
+  geoQueued.add(p.id);
+  urgent ? geoQueue.unshift(p) : geoQueue.push(p);
+  pumpGeocoder();
+}
+
+async function reverseGeocode(p) {
+  const [lat, lon] = p.latlng;
+  const signal = AbortSignal.timeout(8000);
+  try {
+    const r = await fetch("https://nominatim.openstreetmap.org/reverse?" + new URLSearchParams(
+      {lat, lon, format: "jsonv2", zoom: 18, addressdetails: 1, "accept-language": "ru"}), {signal});
+    if (r.ok) {
+      const a = (await r.json()).address || {};
+      const street = a.road || a.pedestrian || a.square || a.neighbourhood || a.suburb;
+      if (street) return shortStreet(street) + (a.house_number ? ", " + a.house_number : "");
+    }
+  } catch (e) { if (e instanceof TypeError && !navigator.onLine) throw e; }
+  const r = await fetch("https://photon.komoot.io/reverse?" + new URLSearchParams({lat, lon, lang: "default", limit: 1}),
+    {signal: AbortSignal.timeout(8000)});
+  if (!r.ok) throw Error("Photon HTTP " + r.status);
+  const f = (await r.json()).features?.[0]?.properties || {};
+  const street = f.street || f.name;
+  return street ? shortStreet(street) + (f.housenumber ? ", " + f.housenumber : "") : null;
+}
+
+async function pumpGeocoder() {
+  if (geoBusy) return;
+  geoBusy = true;
+  let failures = 0;
+  while (geoQueue.length && !geoOffline) {
+    const p = geoQueue.shift();
+    geoQueued.delete(p.id);
+    if (!p.needsAddress) continue;
+    if (cachedAddress(p)) { scheduleAddressRefresh(); continue; }
+    try {
+      const address = await reverseGeocode(p);
+      failures = 0;
+      if (address) {
+        geoCache[geoKey(p)] = address;
+        try { localStorage.setItem(GEO_CACHE_KEY, JSON.stringify(geoCache)); } catch {}
+        applyAddress(p, address);
+        scheduleAddressRefresh();
+      } else p.needsAddress = false;
+    } catch {
+      // Две ошибки подряд — сети нет: остаёмся на подписях по ближайшей улице.
+      if (++failures >= 2) geoOffline = true;
+    }
+    await new Promise(done => setTimeout(done, 1100));
+  }
+  geoBusy = false;
+}
+
+// Обновляем подписи пачкой, не пересчитывая смену.
+function scheduleAddressRefresh() {
+  clearTimeout(geoRefreshTimer);
+  geoRefreshTimer = setTimeout(() => {
+    dedupeLabels(PVZ_LIST);
+    const keep = el("finalPvzSelect").value;
+    populateSelect();
+    el("finalPvzSelect").value = keep;
+    el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(pvzName(p), p.id)));
+    if (!planIssue && runs[routeMode]) { updateClock(true); renderDecision(); }
+    else renderMarkers();
+    if (drawerOpen) renderAnalyticsDrawer();
+  }, 400);
+}
+
+function dedupeLabels(points) {
+  const seen = new Map();
+  for (const p of points) {
+    const base = p.address || p.baseLabel || p.label;
+    const n = (seen.get(base) || 0) + 1;
+    seen.set(base, n);
+    p.label = n > 1 ? base + " (" + n + ")" : base;
+  }
+}
+
+// Важные точки сценария: конечный ПВЗ, кандидаты-хабы, затем видимые на карте.
+function requestScenarioAddresses() {
+  requestAddress(cityById.get(finalPvzId), true);
+  for (const p of hubPool) requestAddress(p);
+  const bounds = map.getBounds();
+  for (const p of PVZ_LIST) if (p.needsAddress && bounds.contains(p.latlng)) requestAddress(p);
 }
 
 </script>
@@ -151907,6 +152050,7 @@ async function refreshDestination() {
   const generation = ++roadGeneration;
   hubPool = candidatePoints();
   recalculateAll();
+  requestScenarioAddresses();
   const {chains}=coverageFor(el("incident").value);
   const pending = [];
   for (const ids of chains) for (let i=1;i<ids.length;i++)
@@ -152409,6 +152553,7 @@ function renderMarkers() {
     const tip = document.createElement("span");
     tip.textContent = roleLabel + " · " + pvzName(pvz) + " · загрузка " + pct + "%";
     m.addTo(markersLayer).bindTooltip(tip, {direction:"top"});
+    if (pvz.needsAddress) m.on("mouseover", () => requestAddress(pvz, true));
     m.on("click", () => {
       el("finalPvzSelect").value = pvz.id;
       onFinalPvzChange();
@@ -153823,7 +153968,7 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space" && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); toggleSimulation(); }
 });
 el("summaryModal").addEventListener("click", e => { if (e.target === el("summaryModal")) closeSummaryModal(); });
-map.on("moveend zoomend", () => { if (activeChain.finalPvz) renderMarkers(); });
+map.on("moveend zoomend", () => { if (activeChain.finalPvz) { renderMarkers(); requestScenarioAddresses(); } });
 configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);
 

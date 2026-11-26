@@ -108,6 +108,7 @@ async function refreshDestination() {
   const generation = ++roadGeneration;
   hubPool = candidatePoints();
   recalculateAll();
+  requestScenarioAddresses();
   const {chains}=coverageFor(el("incident").value);
   const pending = [];
   for (const ids of chains) for (let i=1;i<ids.length;i++)

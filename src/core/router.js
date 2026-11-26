@@ -114,7 +114,8 @@ class RoadGraph {
     const [lat, lon] = latlng;
     const cy = Math.floor(lat / this.cell), cx = Math.floor(lon / this.cell);
     let best = -1, bestM = Infinity;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+    const R = Math.max(1, Math.ceil(maxM / 280));
+    for (let dy = -R; dy <= R; dy++) for (let dx = -R; dx <= R; dx++)
       for (const i of this.grid.get((cy + dy) + ":" + (cx + dx)) || []) {
         if (this.vname[i] < 0) continue;
         const m = haversineM(latlng, [this.lat[i], this.lon[i]]);

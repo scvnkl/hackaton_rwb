@@ -83,6 +83,6 @@ document.addEventListener("keydown", e => {
   if (e.code === "Space" && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); toggleSimulation(); }
 });
 el("summaryModal").addEventListener("click", e => { if (e.target === el("summaryModal")) closeSummaryModal(); });
-map.on("moveend zoomend", () => { if (activeChain.finalPvz) renderMarkers(); });
+map.on("moveend zoomend", () => { if (activeChain.finalPvz) { renderMarkers(); requestScenarioAddresses(); } });
 configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);

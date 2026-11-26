@@ -111,6 +111,7 @@ function renderMarkers() {
     const tip = document.createElement("span");
     tip.textContent = roleLabel + " · " + pvzName(pvz) + " · загрузка " + pct + "%";
     m.addTo(markersLayer).bindTooltip(tip, {direction:"top"});
+    if (pvz.needsAddress) m.on("mouseover", () => requestAddress(pvz, true));
     m.on("click", () => {
       el("finalPvzSelect").value = pvz.id;
       onFinalPvzChange();

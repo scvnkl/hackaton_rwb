@@ -53,14 +53,19 @@ function prepareNetwork(key, catalog) {
 function humanizeNames(key, points){
   const graph = routerFor(key);
   const used = new Map();
+  const tidy = typeof tidyAddress === "function" ? tidyAddress : s => s;
   for (const p of points) {
     if (p.brand !== "wb" || p.label) continue;
-    const raw = /^(Вайлдберриз|Wildberries)\s*·/i.test(p.name) || /\d+\.\d+,\s*\d+\.\d+$/.test(p.name);
-    let label = p.name.replace(/^(Йошкар-Ола|Чебоксары|Казань|Москва),\s*/,"");
+    const raw = /^(Вайлдберриз|Wildberries)\s*·/i.test(p.name) || /\d+\.\d+,\s*\d+\.\d+$/.test(p.name) || /node\/|way\//.test(p.name);
+    let label = tidy(p.name.replace(/^(Йошкар-Ола|Чебоксары|Казань|Москва),\s*/,"").trim());
     if (raw) {
-      const street = graph?.streetNear(p.latlng);
-      label = street ? "у " + street.replace(/^улица /i,"ул. ") : "ПВЗ " + p.latlng.map(v=>v.toFixed(4)).join(", ");
+      // Пока адрес не пришёл из геокодера — ближайшая улица из графа, без координат.
+      p.needsAddress = true;
+      const street = graph?.streetNear(p.latlng, 900);
+      label = street ? tidy(street) + ", рядом" : "ПВЗ WB · адрес уточняется";
     }
+    p.baseLabel = label;
+    if (raw && typeof cachedAddress === "function" && cachedAddress(p)) label = p.address;
     const n = (used.get(label) || 0) + 1;
     used.set(label, n);
     p.label = n > 1 ? label + " (" + n + ")" : label;
