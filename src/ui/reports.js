@@ -108,10 +108,10 @@ function report() {
     ["direct", classic],
     ["hybrid", hybrid],
   ]) {
-    const name = key === "direct" ? "СЦ" : "Гибрид",
+    const name = key === "direct" ? "A · СЦ-2" : "B · Mesh",
       demand = runs[key].demand;
     view.querySelector('[data-result="' + key + '"]').textContent =
-      (key === "direct" ? "Через СЦ" : name) +
+      (key === "direct" ? "A · через СЦ-2" : "B · Mesh через ПВЗ") +
       ": " +
       label(m.margin) +
       " · выдано " +
@@ -150,7 +150,7 @@ function report() {
 function renderAnalyticsDrawer() {
   el("drawerSubtitle").textContent =
     "Сравнение при одинаковом спросе и парке машин";
-  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [econTable(),report()]));
+  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [report(), costBars(), sweepView()]));
 }
 function toggleAnalyticsDrawer() {
   drawerOpen = !drawerOpen;
@@ -165,11 +165,12 @@ function openSummaryModal() {
   el("summaryTable").hidden=Boolean(planIssue);
   if(!planIssue)for (const [key, r] of Object.entries(previews))
     addRow(body, [
-      key === "direct" ? "Классика" : "Гибрид",
+      key === "direct" ? "A · через СЦ-2" : "B · Mesh",
       r ? pathName(r) : "Доставка недоступна",
       r ? rub(r.referencePrice) : "—",
       r ? rub(r.price) : "—",
     ]);
+  renderSummaryExtras();
   el("summaryModal").classList.add("open");
 }
 function closeSummaryModal() {

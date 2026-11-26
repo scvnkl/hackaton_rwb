@@ -38,7 +38,7 @@ function setUnavailable(message){
   el("truckLegStatus").textContent="Ожидание расчёта";
   el("liveLog").textContent="";el("chainExplanation").textContent=message;
   el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
-  el("storedLot").hidden=true;
+  el("storedLot").hidden=true;renderDecision();el("stSplit").textContent="—";
   trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
@@ -83,7 +83,7 @@ function recalculateAll(){
   el("headerSubStatus").textContent="Диспетчер WB · модель смены · координаты СЦ сценарные";
   el("ordersCountLabel").textContent=Math.round(140*val("flowSlider")/100)+" зак/ч";
   el("shelfValue").textContent=(val("shelfSlider")-100)+" п.п.";
-  el("flowLabel").textContent=val("flowSlider")/100+"×";
+  el("flowLabel").textContent=(val("flowSlider")/100).toLocaleString("ru-RU")+"×";
   el("truckCountLabel").textContent=val("truckCountSlider");
   renderManualStock();renderLoadDetail(final);
   const n=manifest(),incident=el("incident").value;
@@ -108,21 +108,22 @@ function recalculateAll(){
     h.premium ? "Тариф СЦ "+rub(h.referencePrice)+" + доплата "+rub(h.premium)+(h.compPerOrder?" − компенсация "+rub(h.compPerOrder):"")+" = "+rub(h.price)+" / заказ." : "К оплате с учётом скидки и SLA: "+rub(h.price)+" / заказ.";
   el("costSplitCard").replaceChildren(econTable());
   updateClock(true);
+  renderDecision();
+  renderFormulas();
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
 }
 
 function populateSelect(){
-  const local=document.createElement("optgroup"), online=document.createElement("optgroup");
-  local.label="Через СЦ офлайн · "+savedDestinations.size;
-  online.label="Остальные адреса · дороги по сети";
-  for(const p of PVZ_LIST)(savedDestinations.has(p.id)?local:online).append(new Option(p.name,p.id));
-  el("finalPvzSelect").replaceChildren(...[local,online].filter(g=>g.children.length));
+  const sorted=[...PVZ_LIST].sort((a,b)=>pvzName(a).localeCompare(pvzName(b),"ru"));
+  el("finalPvzSelect").replaceChildren(...sorted.map(p=>new Option(pvzName(p),p.id)));
   el("finalPvzSelect").value=finalPvzId;
 }
 
 function onFinalPvzChange() {
   finalPvzId = document.getElementById("finalPvzSelect").value;
+  const p = cityById.get(finalPvzId);
+  if (p && !map.getBounds().pad(-0.15).contains(p.latlng)) fitRoute();
   refreshDestination();
 }
 
@@ -141,32 +142,4 @@ function setRouteMode(mode) {
   for(const [id,key] of [["optDirect","direct"],["optHybrid","hybrid"]])
     el(id).classList.toggle("active",key===routeMode);
   if(!planIssue)updateClock(true);
-}
-
-function setStyleMode(m) {
-  if (m === "2gis" && !gisKey) {
-    const field = el("gisKey");
-    field.closest("details").open = true;
-    field.focus();
-    return;
-  }
-  if (m !== "2gis") stopGisLayer();
-  styleMode = m;
-  el("btn2gis").classList.toggle("active", m === "2gis");
-  document.getElementById("btnVec").classList.toggle("active", m === "vector");
-  document
-    .getElementById("btnSat")
-    .classList.toggle("active", m === "satellite");
-  const nativeAtlas = ["yoshkar-ola","cheboksary"].includes(regionId);
-  if (REGION_STREETS[regionId] && !regionAtlases.has(regionId))
-    regionAtlases.set(regionId, new VectorAtlas(REGION_STREETS[regionId]));
-  const background = nativeAtlas ? localAtlas : regionAtlases.get(regionId);
-  const visible = m === "satellite" ? [satLayer] :
-    [background, !nativeAtlas && m === "vector" ? streetLayer : null].filter(Boolean);
-  for (const layer of [satLayer, streetLayer, localAtlas, ...regionAtlases.values()]) {
-    if (!visible.includes(layer)) map.removeLayer(layer);
-  }
-  for (const layer of visible) layer.addTo(map);
-  if (m === "2gis") showGisLayer();
-  setTimeout(() => map.invalidateSize(), 100);
 }

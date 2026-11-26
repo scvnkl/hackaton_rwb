@@ -1,7 +1,5 @@
 el("geoLocal").addEventListener("click", () => setGeo("local"));
 el("geoInter").addEventListener("click", () => setGeo("intercity"));
-el("btnVec").addEventListener("click", () => setStyleMode("vector"));
-el("btn2gis").addEventListener("click", () => setStyleMode("2gis"));
 el("gisConfig").addEventListener("submit", event => {
   event.preventDefault();
   const value = el("gisKey").value.trim();
@@ -10,9 +8,8 @@ el("gisConfig").addEventListener("submit", event => {
   gisKey = value;
   try { localStorage.setItem("wb-sim.2gis-key", value); } catch {}
   el("gisKey").value = "";
-  setStyleMode("2gis");
+  showGis();
 });
-el("btnSat").addEventListener("click", () => setStyleMode("satellite"));
 el("optHybrid").addEventListener("click", () => setRouteMode("hybrid"));
 el("optDirect").addEventListener("click", () => setRouteMode("direct"));
 el("btnToggleSim").addEventListener("click", toggleSimulation);
@@ -52,7 +49,7 @@ el("storageRate").textContent = rub(CONFIG.storagePerBoxDay);
 el("scrub").max = CONFIG.shiftMinutes;
 function regionOptions() {
   el("regionSelect").replaceChildren(...Object.entries(REGION_CATALOGS).map(([key,c]) =>
-    new Option(c.city + (c.boundary ? "" : " · пилотная зона"), key)));
+    new Option("📍 " + c.city, key)));
 }
 regionOptions();
 el("regionSearch").addEventListener("submit", e => {
@@ -80,7 +77,12 @@ el("regionFile").addEventListener("change", async e => {
     if (e.target.files[0] === file) e.target.value = "";
   }
 });
-map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
-if (gisKey) styleMode = "2gis";
+el("gisStatus").addEventListener("click", () => { if (baseKind === "offline") showGis(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeSummaryModal(); if (drawerOpen) toggleAnalyticsDrawer(); }
+  if (e.code === "Space" && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); toggleSimulation(); }
+});
+el("summaryModal").addEventListener("click", e => { if (e.target === el("summaryModal")) closeSummaryModal(); });
+map.on("moveend zoomend", () => { if (activeChain.finalPvz) renderMarkers(); });
 configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);

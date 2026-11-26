@@ -9,6 +9,8 @@ async function check(page, url) {
   page.on("pageerror", error => errors.push(error.message));
   await page.route("https://**/*", route => route.abort("internetdisconnected"));
   await page.goto(url);
+  // Вкладки боковой панели: в тесте показываем все панели сразу.
+  await page.addStyleTag({content:".tab-pane{display:block!important}"});
   const get = id => page.locator("#" + id);
   const read = async id => (await get(id).textContent()).replace(/\s+/g," ").trim();
   const preset = name => page.locator('[data-preset="'+name+'"]').click();
@@ -123,20 +125,18 @@ async function check(page, url) {
   await get("regionSelect").selectOption("yoshkar-ola");
   assert.match(await read("stockStatus"),/8 шт. · 40 л/);
 
-  for (const [key,coverage] of [["cheboksary",5],["kazan",1],["moscow",1],["yoshkar-ola",8]]){
+  // Маршрут по улицам строится к любому ПВЗ — расчёт не блокируется ни в одном регионе.
+  for (const key of ["cheboksary","kazan","moscow","yoshkar-ola"]){
     await get("regionSelect").selectOption(key);
-    const group=get("finalPvzSelect").locator("optgroup").first();
-    assert.equal(await group.locator("option").count(),coverage);
+    assert.ok(await get("finalPvzSelect").locator("option").count() > 100);
     assert.ok(await get("btnToggleSim").isEnabled());
   }
   await get("regionSelect").selectOption("moscow");
-  const extra=get("finalPvzSelect").locator("optgroup").nth(1).locator("option").first();
-  await get("finalPvzSelect").selectOption(await extra.getAttribute("value"));
-  await page.waitForFunction(()=>!document.getElementById("roadStatus").textContent.includes("Запрос"));
-  assert.ok(await get("btnToggleSim").isDisabled());
-  const offline=await summary();
-  assert.match(offline,/Недостаточно дорожных данных/);
-  assert.doesNotMatch(offline,/4 800|Выберите доставку|Выберите гибрид/);
+  const last=get("finalPvzSelect").locator("option").last();
+  await get("finalPvzSelect").selectOption(await last.getAttribute("value"));
+  await page.waitForFunction(()=>!document.getElementById("roadStatus").textContent.includes("уточняем"));
+  assert.ok(await get("btnToggleSim").isEnabled());
+  assert.doesNotMatch(await summary(),/Недостаточно дорожных данных для этого адреса/);
   assert.deepEqual(errors,[]);
 }
 
@@ -149,7 +149,11 @@ async function check(page, url) {
     await page.goto(url);
     const errors = [];
     page.on("pageerror", err => errors.push(err.message));
-    await page.locator("#btn2gis").click();
+    await page.route("https://**/*", route => route.abort("internetdisconnected"));
+    // Без ключа и без сети — одна офлайн-подложка, без наложения слоёв.
+    await page.waitForFunction(()=>baseKind==="offline");
+    assert.equal(await page.evaluate(()=>[localAtlas,streetLayer,...regionAtlases.values()].filter(l=>map.hasLayer(l)).length),1);
+    await page.addStyleTag({content:".tab-pane{display:block!important}"});
     await page.locator("#gisKey").fill("test-key");
     const tilePattern = /^https:\/\/tile[0-4]\.maps\.2gis\.com\/v2\/tiles\/online_sd\//;
     let requests = 0;
@@ -158,19 +162,17 @@ async function check(page, url) {
       requests++;
       return route.fulfill({contentType:"image/png",path:path.resolve(__dirname,"../vendor/leaflet/images/marker-icon.png")});
     });
-    await page.locator("#gisConfig button").click();
-    await page.waitForFunction(()=>gisLayer?.getContainer().querySelector("img.leaflet-tile-loaded"));
-    assert.ok(requests > 0);
-    assert.equal(await page.evaluate(()=>styleMode),"2gis");
-    await page.reload();
-    await page.waitForFunction(()=>gisLayer?.getContainer().querySelector("img.leaflet-tile-loaded"));
     await page.locator("#scrub").evaluate(input=>{input.value=57;input.dispatchEvent(new Event("input"));});
-    await page.locator("#btnVec").click();
+    await page.locator("#gisConfig button").click();
+    await page.waitForFunction(()=>baseLayer?.getContainer?.()?.querySelector("img.leaflet-tile-loaded"));
+    assert.ok(requests > 0);
+    assert.equal(await page.evaluate(()=>baseKind),"2gis-keyed");
+    assert.equal(await page.evaluate(()=>map.hasLayer(localAtlas)),false);
+    assert.match(await page.locator("#gisStatus").textContent(),/2ГИС/);
     await page.unroute(tilePattern);
-    await page.locator("#gisConfig").evaluate(form => form.closest("details").open = true);
     await page.locator("#gisKey").fill("unavailable-test-key");
     await page.locator("#gisConfig button").click();
-    await page.waitForFunction(()=>styleMode==="vector" && document.getElementById("gisStatus").textContent.includes("недоступен"));
+    await page.waitForFunction(()=>baseKind==="offline", null, {timeout:30000});
     assert.equal(await page.locator("#scrub").inputValue(),"57");
     assert.deepEqual(errors,[]);
     console.log("Регрессии интерфейса прошли · " + url);

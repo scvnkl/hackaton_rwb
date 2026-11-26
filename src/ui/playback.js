@@ -51,9 +51,9 @@ function updateClock(force=false) {
     let m = L.marker(pos, {
       icon: L.divIcon({
         className: "",
-        html: "🚚",
-        iconSize: [24, 24],
-        iconAnchor: p.leg ? [12, 12] : [12, 35],
+        html: '<div class="truck' + (r.mode === "hybrid" ? " hybrid" : "") + '"><span>' + r.van + '</span></div>',
+        iconSize: [30, 30],
+        iconAnchor: p.leg ? [15, 15] : [15, 38],
       }),
       zIndexOffset: 900,
     })
@@ -90,12 +90,14 @@ function updateClock(force=false) {
   plot(current);
   updateMapContext(current,force);
   renderOpeningLot();
+  renderLiveExtras();
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {
   playing = false;
   cancelAnimationFrame(frame);
-  el("btnToggleSim").textContent = "▶ Запустить машины";
+  el("btnToggleSim").classList.remove("playing");
+  el("btnToggleSim").textContent = elapsed >= CONFIG.shiftMinutes ? "↻ Сначала" : elapsed > 0 ? "▶ Продолжить" : "▶ Запустить смену";
 }
 function resetSimulation() {
   stopClock();
@@ -106,7 +108,7 @@ function animate(now) {
   if (!playing) return;
   elapsed = Math.min(
     CONFIG.shiftMinutes,
-    elapsed + Math.min(0.5, (now - previous) / 1000) * 4,
+    elapsed + Math.min(0.5, (now - previous) / 1000) * (Number(el("speedSelect")?.value) || 4),
   );
   previous = now;
   updateClock();
@@ -119,6 +121,6 @@ function toggleSimulation() {
   if (elapsed >= CONFIG.shiftMinutes) elapsed = 0;
   playing = true;
   previous = performance.now();
-  el("btnToggleSim").textContent = "⏸ Пауза";
+  el("btnToggleSim").textContent = "⏸ Пауза";el("btnToggleSim").classList.add("playing");
   frame = requestAnimationFrame(animate);
 }

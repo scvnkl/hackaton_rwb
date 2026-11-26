@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="wb-sim-2gis-key" content="" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      WB ПВЗ — Доставка WB через СЦ или ПВЗ-склад
-    </title>
+    <title>WB Mesh · ПВЗ вместо второго СЦ</title>
 
     <style>/* required styles */
 
@@ -670,837 +668,417 @@ svg.leaflet-image-layer.leaflet-interactive path {
 		}
 	}
 </style>
-    <style>:root {
-  --wb-primary: #a73afd;
-  --wb-dark: #481173;
-  --wb-soft: #f6ebff;
-  --bg: #f4f5f8;
+    <style>/* WB Mesh · интерфейс в стилистике Wildberries */
+:root {
+  --wb: #cb11ab;
+  --wb-2: #a73afd;
+  --wb-deep: #481173;
+  --wb-grad: linear-gradient(135deg, #cb11ab 0%, #a73afd 55%, #481173 100%);
+  --wb-soft: #f7ecfb;
+  --wb-soft-2: #efe3f8;
+  --bg: #f4f2f8;
   --card: #ffffff;
-  --text: #16181d;
-  --muted: #666d7c;
-  --border: #e5e7eb;
+  --text: #1f1530;
+  --muted: #7a7289;
+  --line: #e9e4f0;
+  --good: #13a36b;
+  --good-soft: #e5f7ef;
+  --bad: #e5484d;
+  --bad-soft: #fdecec;
+  --warn: #f2a516;
+  --classic: #2f6bff;
+  --radius: 16px;
+  --shadow: 0 6px 24px rgba(72, 17, 115, 0.08);
+  --shadow-lg: 0 16px 48px rgba(72, 17, 115, 0.18);
 }
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-  font-family:
-    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Inter, sans-serif;
-}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
 body {
+  margin: 0;
+  font: 14px/1.45 "Inter", "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  color: var(--text);
   background: var(--bg);
-  color: var(--text);
-  height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: not-allowed; }
+h2, h3, h4 { margin: 0; }
 
-header {
-  background: var(--card);
-  border-bottom: 1px solid var(--border);
-  padding: 10px 18px;
+/* ---------- верхняя панель ---------- */
+.topbar {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  flex-wrap: wrap;
-  z-index: 20;
-}
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-.brand-badge {
-  background: linear-gradient(135deg, var(--wb-primary), var(--wb-dark));
+  gap: 20px;
+  padding: 10px 20px;
+  background: var(--wb-grad);
   color: #fff;
-  font-weight: 800;
-  font-size: 13px;
-  padding: 6px 10px;
-  border-radius: 10px;
+  flex: none;
 }
-.brand-title {
-  font-weight: 800;
-  font-size: 15px;
+.brand { display: flex; align-items: center; gap: 12px; min-width: 260px; }
+.brand-logo {
+  width: 42px; height: 42px; border-radius: 12px;
+  background: #fff; color: var(--wb);
+  display: grid; place-items: center;
+  font-weight: 900; font-size: 17px; letter-spacing: -0.5px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.15);
 }
-.brand-sub {
-  font-size: 11px;
-  color: var(--muted);
+.brand-title { font-weight: 800; font-size: 17px; letter-spacing: -0.2px; }
+.brand-sub { font-size: 12px; opacity: 0.85; }
+.region-switch { display: flex; align-items: center; gap: 10px; margin: 0 auto; }
+.topbar .seg { background: rgba(255, 255, 255, 0.16); }
+.topbar .seg-btn { color: #fff; }
+.topbar .seg-btn.active { background: #fff; color: var(--wb-deep); }
+.topbar .select.compact {
+  background: rgba(255, 255, 255, 0.16); color: #fff; border-color: transparent; width: 175px; font-weight: 600;
+}
+.topbar .select.compact option { color: var(--text); }
+.top-actions { display: flex; gap: 10px; }
+.topbar .btn.ghost { background: rgba(255, 255, 255, 0.16); color: #fff; border-color: transparent; }
+.topbar .btn.ghost:hover { background: rgba(255, 255, 255, 0.26); }
+.topbar .btn.primary { background: #fff; color: var(--wb-deep); }
+.topbar .btn.primary:hover { transform: translateY(-1px); }
+.pill {
+  background: rgba(255, 255, 255, 0.25); border-radius: 99px; padding: 1px 8px; font-size: 11px; font-weight: 600;
 }
 
-.seg-group {
-  display: flex;
-  background: #eef0f4;
-  padding: 3px;
-  border-radius: 10px;
-  gap: 3px;
+/* ---------- сценарии ---------- */
+.scenario-bar {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 20px; background: #fff; border-bottom: 1px solid var(--line);
+  flex: none; overflow-x: auto;
 }
+.scenario-label { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.6px; margin-right: 4px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1.5px solid var(--line); background: #fff; border-radius: 99px;
+  padding: 6px 14px; font-weight: 600; font-size: 13px; white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.chip:hover { border-color: var(--wb-2); color: var(--wb-deep); }
+.chip.active { background: var(--wb-grad); border-color: transparent; color: #fff; box-shadow: 0 4px 14px rgba(203, 17, 171, 0.3); }
+.preset-caption { margin-left: auto; font-size: 12px; color: var(--wb-deep); font-weight: 600; white-space: nowrap; }
+
+/* ---------- рабочая область ---------- */
+.workspace { flex: 1; display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
+.side { overflow-y: auto; padding: 14px 14px 30px; border-right: 1px solid var(--line); background: var(--bg); }
+.tabs {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  background: #fff; padding: 4px; border-radius: 14px; margin-bottom: 12px; box-shadow: var(--shadow);
+  position: sticky; top: 0; z-index: 5;
+}
+.tab { border: 0; background: transparent; padding: 8px 6px; border-radius: 10px; font-weight: 600; color: var(--muted); }
+.tab.active { background: var(--wb-soft); color: var(--wb-deep); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+.card {
+  background: var(--card); border-radius: var(--radius); padding: 14px 16px;
+  margin-bottom: 12px; box-shadow: var(--shadow);
+}
+.card-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+.card h2 { font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.step {
+  width: 22px; height: 22px; border-radius: 50%; background: var(--wb-grad); color: #fff;
+  display: inline-grid; place-items: center; font-size: 12px; font-weight: 800;
+}
+.hint { color: var(--muted); font-size: 12px; margin: 6px 0 0; }
+.card-head .hint { margin: 0; text-align: right; }
+.tag { background: var(--wb-soft); color: var(--wb-deep); font-weight: 700; font-size: 12px; padding: 2px 10px; border-radius: 99px; }
+.tag:empty { display: none; }
+.link { border: 0; background: none; color: var(--wb); font-weight: 600; font-size: 12px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.field > span { font-size: 12px; color: var(--muted); font-weight: 600; }
+.field > span b { color: var(--text); }
+.field > span em { font-style: normal; color: var(--muted); float: right; font-weight: 500; }
+.field input[type="number"], .field input[type="search"], .field input[type="password"], .inline-form input, .select {
+  width: 100%; border: 1.5px solid var(--line); border-radius: 10px; padding: 8px 10px; background: #fff; outline: none;
+  transition: border-color 0.15s;
+}
+.field input:focus, .select:focus, .inline-form input:focus { border-color: var(--wb-2); }
+.field input.changed { border-color: var(--wb); background: var(--wb-soft); }
+.field input:invalid { border-color: var(--bad); }
+.select { appearance: none; padding-right: 30px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%237a7289' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 10px center;
+}
+.grid-5 { display: grid; grid-template-columns: 1.3fr repeat(4, 1fr); gap: 6px; margin-top: 10px; }
+.grid-5 .field { margin-bottom: 0; }
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 13px; margin: 8px 0; cursor: pointer; }
+.check input { accent-color: var(--wb); width: 16px; height: 16px; }
+.check.warn { background: #fff7e6; border-radius: 10px; padding: 8px 10px; }
+.check[hidden] { display: none; }
+.inline-form { display: flex; gap: 6px; margin: 8px 0; }
+.btn-row { display: flex; gap: 6px; margin-top: 8px; }
+
+input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
+
+.seg { display: inline-flex; background: var(--wb-soft); border-radius: 12px; padding: 3px; gap: 2px; }
+.seg.full { display: grid; grid-template-columns: repeat(3, 1fr); width: 100%; }
 .seg-btn {
-  border: none;
-  background: transparent;
-  padding: 6px 11px;
-  border-radius: 8px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-  transition: all 0.15s;
+  border: 0; background: transparent; border-radius: 9px; padding: 7px 12px; font-weight: 600; font-size: 13px; color: var(--wb-deep);
+  display: flex; flex-direction: column; align-items: center; line-height: 1.2;
 }
-.seg-btn.active {
-  background: #fff;
-  color: var(--wb-dark);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
-}
+.seg-btn small { font-weight: 500; font-size: 10.5px; opacity: 0.65; margin-top: 2px; }
+.seg-btn.active { background: #fff; box-shadow: 0 2px 8px rgba(72, 17, 115, 0.12); }
 
-.workspace {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
+.btn {
+  border: 1.5px solid var(--line); background: #fff; border-radius: 12px; padding: 8px 14px; font-weight: 700;
+  display: inline-flex; align-items: center; gap: 6px; transition: all 0.15s ease;
 }
+.btn:hover { border-color: var(--wb-2); }
+.btn.primary { background: var(--wb-grad); color: #fff; border-color: transparent; }
+.btn.small { padding: 6px 10px; font-size: 12.5px; border-radius: 10px; }
+.btn.ghost { background: transparent; }
 
-.left-panel {
-  width: 495px;
-  min-width: 390px;
-  background: var(--card);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-  padding: 12px 14px;
-  gap: 10px;
+/* ---------- маршрут ---------- */
+.chain {
+  margin-top: 8px; background: var(--wb-soft); border-radius: 10px; padding: 8px 10px; font-size: 12.5px;
+  white-space: pre-line; color: var(--wb-deep);
 }
-
-.box {
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 11px 12px;
-  background: #fff;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.box-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.box-title {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--wb-dark);
-}
-
-.sim-controls {
-  display: flex;
-  gap: 6px;
-}
-.sim-btn {
-  flex: 1;
-  border: none;
-  border-radius: 9px;
-  padding: 8px 10px;
-  font-size: 12px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-.sim-btn.start {
-  background: var(--wb-primary);
-  color: #fff;
-}
-.sim-btn.start.running {
-  background: #dc2626;
-}
-.sim-btn.reset {
-  background: #eef0f4;
-  color: var(--text);
-  flex: 0.55;
-}
-.sim-btn.summary-open {
-  background: var(--wb-soft);
-  color: var(--wb-dark);
-  flex: 0.9;
-  border: 1px solid #dfbfff;
-}
-
-.sim-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12px;
-}
-input[type="range"] {
-  width: 100%;
-  accent-color: var(--wb-primary);
-  cursor: pointer;
-}
-
-.pvz-select {
-  width: 100%;
-  padding: 7px 10px;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  font-size: 12px;
-  font-weight: 600;
-  background: #fff;
-}
-
-.chain-banner {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 9px;
-  padding: 8px 10px;
-  font-size: 11.5px;
-  line-height: 1.45;
-}
-.chain-banner strong {
-  color: var(--wb-dark);
-}
-
-.metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
-}
-.metric-card {
-  background: #f8f9fb;
-  border: 1px solid var(--border);
-  border-radius: 9px;
-  padding: 7px 8px;
-}
-.metric-lbl {
-  font-size: 10px;
-  color: var(--muted);
-}
-.metric-val {
-  font-size: 13px;
-  font-weight: 800;
-  margin-top: 2px;
-}
+.mini-metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 10px; }
+.mini-metrics div { background: var(--bg); border-radius: 10px; padding: 8px; text-align: center; }
+.mini-metrics b { display: block; font-size: 16px; font-weight: 800; }
+.mini-metrics small { color: var(--muted); font-size: 11px; }
 
 .route-option {
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 9px 11px;
-  cursor: pointer;
-  transition: all 0.15s;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
+  width: 100%; display: grid; grid-template-columns: 12px 1fr auto; gap: 10px; align-items: center;
+  text-align: left; border: 2px solid var(--line); background: #fff; border-radius: 14px; padding: 10px 12px; margin-bottom: 8px;
+  transition: all 0.15s ease;
 }
-.route-option.active {
-  border: 2px solid var(--wb-primary);
-  background: var(--wb-soft);
-}
-.route-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 12.5px;
-  font-weight: 700;
-  gap: 8px;
-}
-.route-sub {
-  font-size: 11px;
-  color: var(--muted);
-}
+.route-option:hover { border-color: var(--wb-2); }
+.route-option.active { border-color: var(--wb); background: var(--wb-soft); }
+#optDirect.active { border-color: var(--classic); background: #eef3ff; }
+.route-dot { width: 12px; height: 12px; border-radius: 50%; }
+.route-dot.classic { background: var(--classic); }
+.route-dot.hybrid { background: var(--wb); }
+.route-body { display: flex; flex-direction: column; min-width: 0; }
+.route-name { font-weight: 700; font-size: 13px; }
+.route-sub { font-size: 11.5px; color: var(--muted); }
+.route-price { font-weight: 800; font-size: 17px; white-space: nowrap; }
 
-.cost-card {
-  background: #faf7ff;
-  border: 1px solid #e5ccff;
-  border-radius: 10px;
-  padding: 10px;
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-  font-size: 12px;
+.decision { margin-top: 4px; }
+.decision-head { border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 2px; }
+.decision-head.good { background: var(--good-soft); }
+.decision-head.good b { color: var(--good); }
+.decision-head.bad { background: var(--bad-soft); }
+.decision-head.bad b { color: var(--bad); }
+.decision-head span { font-size: 12.5px; font-weight: 600; }
+.decision-head em { font-style: normal; font-size: 12px; color: var(--muted); }
+.checklist { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
+.checklist li { font-size: 12.5px; padding-left: 24px; position: relative; }
+.checklist li::before {
+  content: "✓"; position: absolute; left: 0; top: 1px; width: 17px; height: 17px; border-radius: 50%;
+  display: grid; place-items: center; font-size: 10px; font-weight: 900; color: #fff; background: var(--good);
 }
-.stacked-bar {
-  width: 100%;
-  height: 12px;
-  border-radius: 999px;
-  overflow: hidden;
-  display: flex;
-  background: #e5e7eb;
-}
-.bar-seg {
-  height: 100%;
-  transition: width 0.25s ease;
-}
-.legend-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 4px 10px;
-  font-size: 11px;
-}
-.leg-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.leg-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 5px;
-}
+.checklist li.no::before { content: "✕"; background: var(--bad); }
+.checklist li.no { color: var(--bad); font-weight: 600; }
 
-.live-stats {
-  background: #f8fafc;
-  border: 1px solid #cbd5e1;
-  border-radius: 10px;
-  padding: 9px 10px;
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 6px;
-  font-size: 11.5px;
+/* ---------- карта ---------- */
+.map-wrap { position: relative; min-width: 0; }
+#map { position: absolute; inset: 0; background: #ecece4; }
+.leaflet-container { font: inherit; }
+.kpi-strip {
+  position: absolute; top: 14px; left: 14px; right: 236px; z-index: 500;
+  display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; pointer-events: none;
 }
-.stat-cell {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  padding: 6px 8px;
+.kpi {
+  background: rgba(255, 255, 255, 0.96); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow);
+  backdrop-filter: blur(6px);
 }
-.stat-num {
-  font-size: 14px;
-  font-weight: 800;
-  color: var(--wb-dark);
-}
-.stat-txt {
-  font-size: 10px;
-  color: var(--muted);
-}
+.kpi small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.kpi b { font-size: 20px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; }
+.kpi.accent { background: var(--wb-grad); color: #fff; }
+.kpi.accent small { color: rgba(255, 255, 255, 0.85); }
 
-.map-wrap {
-  flex: 1;
-  position: relative;
-  background: #e5e7eb;
+.map-legend {
+  position: absolute; top: 14px; right: 14px; z-index: 500; width: 210px;
+  background: rgba(255, 255, 255, 0.96); border-radius: 14px; padding: 10px 12px; box-shadow: var(--shadow);
+  font-size: 12px; display: grid; gap: 4px;
 }
-#map {
-  width: 100%;
-  height: 100%;
-  z-index: 1;
-}
+.line-sample { display: inline-block; width: 22px; height: 4px; border-radius: 3px; margin-right: 8px; vertical-align: middle; }
+.classic-line { background: var(--classic); }
+.hybrid-line { background: var(--wb); }
+.dot-sample { display: inline-block; width: 12px; height: 12px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; border: 2px solid #fff; box-shadow: 0 0 0 1px var(--line); }
+.dot-sample.final { background: var(--wb-deep); }
+.dot-sample.hub { background: var(--wb); }
+.dot-sample.low { background: #13a36b; }
+.dot-sample.mid { background: #f2a516; margin-left: 4px; }
+.dot-sample.high { background: #e5484d; margin-left: 4px; }
+.map-source { font-size: 11px; margin-top: 4px; padding-top: 6px; border-top: 1px solid var(--line); color: var(--muted); font-weight: 600; }
+.map-source[data-tone="ok"]::before { content: "● "; color: var(--good); }
+.map-source[data-tone="warn"] { color: #b26b00; cursor: pointer; }
+.map-source[data-tone="warn"]::after { content: " · повторить"; text-decoration: underline; }
 
-.map-top-bar {
-  position: absolute;
-  top: 12px;
-  left: 12px;
-  right: 12px;
-  z-index: 500;
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 10px;
-  pointer-events: none;
+.player {
+  position: absolute; left: 14px; right: 70px; bottom: 14px; z-index: 500;
+  background: #fff; border-radius: 18px; box-shadow: var(--shadow-lg); padding: 10px 14px;
+  display: flex; align-items: center; gap: 12px;
 }
-.map-legend-box {
-  background: rgba(255, 255, 255, 0.96);
-  padding: 8px 12px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
-  font-size: 11.5px;
-  pointer-events: auto;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  max-width: 740px;
+.play {
+  border: 0; background: var(--wb-grad); color: #fff; font-weight: 800; border-radius: 14px; padding: 12px 18px;
+  white-space: nowrap; min-width: 190px; box-shadow: 0 6px 18px rgba(203, 17, 171, 0.35);
 }
-.road-legend {
-  display: flex;
-  gap: 12px;
-  flex-wrap: wrap;
-  align-items: center;
+.play.playing { background: var(--wb-deep); }
+.timeline { flex: 1; min-width: 0; }
+.timeline-top { display: flex; justify-content: space-between; align-items: center; }
+.clock { font-weight: 800; font-size: 15px; font-variant-numeric: tabular-nums; }
+.speed { font-size: 12px; color: var(--muted); }
+.speed select { border: 1px solid var(--line); border-radius: 8px; padding: 2px 4px; background: #fff; }
+.ticks { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); padding: 0 4px; }
+.log { position: relative; }
+.log summary { list-style: none; cursor: pointer; font-weight: 700; font-size: 12.5px; background: var(--wb-soft); color: var(--wb-deep); border-radius: 10px; padding: 8px 12px; }
+.log summary::-webkit-details-marker { display: none; }
+.log[open] .event-log {
+  position: absolute; right: 0; bottom: 48px; width: 440px; max-height: 260px; overflow: auto;
+  background: #fff; border-radius: 14px; box-shadow: var(--shadow-lg); padding: 12px; white-space: pre-line; font-size: 12px; display: block;
 }
-.line-sample {
-  width: 18px;
-  height: 4px;
-  border-radius: 2px;
-  display: inline-block;
-  margin-right: 5px;
-  vertical-align: middle;
+.event-log { display: none; }
+.plan-message {
+  background: var(--bad-soft); color: #9c1c22; border-radius: 12px; padding: 10px 12px; font-weight: 600; font-size: 13px; margin: 8px 0;
 }
+.map-wrap > .plan-message { position: absolute; left: 50%; bottom: 100px; transform: translateX(-50%); z-index: 600; box-shadow: var(--shadow); max-width: 520px; }
+.leaflet-bottom.leaflet-right { margin-bottom: 96px; }
+.leaflet-control-attribution { font-size: 10px; border-radius: 8px 0 0 0; }
 
-.layer-box {
-  background: #fff;
-  padding: 3px;
-  border-radius: 10px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.14);
-  display: flex;
-  gap: 3px;
-  pointer-events: auto;
-}
-.layer-btn {
-  border: none;
-  background: transparent;
-  padding: 6px 11px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--muted);
-  cursor: pointer;
-}
-.layer-btn.active {
-  background: var(--wb-dark);
-  color: #fff;
-}
-
+/* маркеры */
 .pvz-circle {
-  border-radius: 50%;
-  border: 2.5px solid #fff;
-  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.3);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-weight: 800;
-  font-size: 10px;
-  cursor: pointer;
+  width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid #fff;
+  box-shadow: 0 2px 8px rgba(31, 21, 48, 0.3);
+  display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 800; font-size: 10px; cursor: pointer;
   transition: transform 0.15s ease;
 }
+.pvz-circle:hover { transform: scale(1.12); }
+.load-low { background: #13a36b; }
+.load-medium { background: #f2a516; }
+.load-high { background: #e5484d; }
 .pvz-circle.final-pvz {
-  transform: scale(1.22);
-  background: #481173 !important;
-  box-shadow:
-    0 0 0 4px rgba(167, 58, 253, 0.35),
-    0 3px 10px rgba(0, 0, 0, 0.35);
+  width: 42px; height: 42px; margin: -3px; background: var(--wb-deep) !important; font-size: 11px;
+  box-shadow: 0 0 0 5px rgba(167, 58, 253, 0.35), 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 .pvz-circle.hub-pvz {
-  transform: scale(1.18);
-  background: #d97706 !important;
-  box-shadow:
-    0 0 0 4px rgba(245, 158, 11, 0.35),
-    0 3px 10px rgba(0, 0, 0, 0.35);
+  width: 40px; height: 40px; margin: -2px; background: var(--wb) !important;
+  box-shadow: 0 0 0 5px rgba(203, 17, 171, 0.3), 0 4px 12px rgba(0, 0, 0, 0.3);
+  animation: pulse 1.6s ease-in-out infinite;
 }
+@keyframes pulse { 50% { box-shadow: 0 0 0 9px rgba(203, 17, 171, 0.12), 0 4px 12px rgba(0, 0, 0, 0.3); } }
 .sc-box {
-  background: #1e293b;
-  color: #fff;
-  border: 2px solid #fff;
-  border-radius: 8px;
-  font-weight: 800;
-  font-size: 9px;
-  line-height: 1.15;
-  text-align: center;
-  padding: 3px 6px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35);
-  white-space: nowrap;
+  position: absolute; transform: translate(-50%, -50%);
+  background: #1f1530; color: #fff; border: 2px solid #fff; border-radius: 10px;
+  font-weight: 800; font-size: 10px; line-height: 1.2; text-align: center; padding: 4px 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35); white-space: pre-line; width: max-content;
 }
-.sc-box.sc1 {
-  background: #0f172a;
-  border-color: #38bdf8;
+.sc-box.sc1 { background: #1f1530; }
+.sc-box.sc2 { background: var(--classic); }
+.sc-box.approx { border-style: dashed; }
+.truck {
+  width: 30px; height: 30px; border-radius: 50%; background: var(--classic); border: 3px solid #fff;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.35); display: grid; place-items: center; position: relative;
 }
-.sc-box.sc2 {
-  background: #1d4ed8;
-  border-color: #bfdbfe;
-}
-.sc-box.approx {
-  border-style: dashed;
+.truck.hybrid { background: var(--wb); }
+.truck::before { content: "🚚"; font-size: 14px; }
+.truck span {
+  position: absolute; right: -6px; top: -6px; background: #fff; color: var(--wb-deep); font-size: 9px; font-weight: 900;
+  width: 14px; height: 14px; border-radius: 50%; display: grid; place-items: center; box-shadow: 0 1px 3px rgba(0,0,0,.3);
 }
 
-.truck-badge {
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  border: 2.5px solid #fff;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 14px;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.4);
-}
+/* ---------- таблицы ---------- */
+.cost-scroll { overflow-x: auto; }
+.summary-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.summary-table th { text-align: left; color: var(--muted); font-weight: 700; font-size: 11.5px; padding: 6px 8px; border-bottom: 1.5px solid var(--line); }
+.summary-table td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.summary-table td:not(:first-child), .summary-table th:not(:first-child) { text-align: right; white-space: nowrap; }
+.summary-table tr:hover td { background: #faf7fd; }
+.summary-table.compact td, .summary-table.compact th { padding: 5px 6px; }
+.cost-card .summary-table td:first-child { color: #4a4058; }
 
+/* ---------- модалка ---------- */
 .modal-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  display: none;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: 16px;
+  position: fixed; inset: 0; z-index: 2000; background: rgba(31, 21, 48, 0.5); backdrop-filter: blur(3px);
+  display: none; align-items: center; justify-content: center; padding: 24px;
 }
-.modal-backdrop.open {
-  display: flex;
-}
+.modal-backdrop.open { display: flex; }
 .modal-card {
-  background: #fff;
-  width: 100%;
-  max-width: 740px;
-  max-height: 90vh;
-  overflow-y: auto;
-  border-radius: 16px;
-  padding: 20px;
-  box-shadow: 0 24px 48px rgba(0, 0, 0, 0.25);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  background: #fff; border-radius: 22px; width: min(1000px, 100%); max-height: 100%; overflow: auto; padding: 22px 26px; box-shadow: var(--shadow-lg);
 }
-.summary-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 12px;
+.modal-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+.modal-head h3 { font-size: 22px; font-weight: 800; letter-spacing: -0.3px; }
+.eyebrow { color: var(--wb); font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.6px; }
+.close-modal-btn, .drawer-close {
+  border: 0; background: var(--bg); width: 36px; height: 36px; border-radius: 50%; font-size: 16px; flex: none;
 }
-.summary-table th,
-.summary-table td {
-  border: 1px solid var(--border);
-  padding: 8px 10px;
-  text-align: left;
-}
-.summary-table th {
-  background: #f8fafc;
-  font-weight: 700;
-  color: var(--wb-dark);
-}
-.close-modal-btn {
-  align-self: flex-end;
-  background: var(--wb-dark);
-  color: #fff;
-  border: none;
-  padding: 9px 16px;
-  border-radius: 9px;
-  font-weight: 700;
-  cursor: pointer;
-}
+.close-modal-btn:hover, .drawer-close:hover { background: var(--wb-soft); }
+.summary-hero { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+.big-kpi { background: var(--bg); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; }
+.big-kpi small { color: var(--muted); font-weight: 600; font-size: 12px; }
+.big-kpi b { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; }
+.big-kpi em { font-style: normal; color: var(--muted); font-size: 12px; }
+.big-kpi.good { background: var(--wb-grad); color: #fff; }
+.big-kpi.good small, .big-kpi.good em { color: rgba(255, 255, 255, 0.85); }
+.big-kpi.bad { background: var(--bad-soft); }
+.section-title { font-size: 14px; font-weight: 800; margin: 18px 0 8px; }
+.recommendation { background: var(--wb-soft); border-radius: 16px; padding: 14px 16px; margin-bottom: 12px; }
+.recommendation small { color: var(--wb); font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; }
+.recommendation h3 { font-size: 18px; margin: 4px 0; }
+.recommendation p { margin: 4px 0; font-size: 13px; }
+.rec-results { display: flex; flex-wrap: wrap; gap: 6px 16px; font-weight: 700; font-size: 13px; margin-top: 6px; }
+.bar { display: inline-block; width: 60px; height: 6px; background: var(--line); border-radius: 3px; vertical-align: middle; overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--wb-grad); }
 
-@media (max-width: 880px) {
-  .workspace {
-    flex-direction: column-reverse;
-  }
-  .left-panel {
-    width: 100%;
-    height: 56%;
-    min-width: unset;
-  }
-  .map-wrap {
-    height: 44%;
-  }
-}
-
-/* Выезжающее боковое меню с инфографикой (правый нижний/боковой угол) */
-.drawer-fab {
-  position: fixed;
-  right: 16px;
-  bottom: 18px;
-  z-index: 950;
-  background: linear-gradient(135deg, #481173, #a73afd);
-  color: #fff;
-  border: 2px solid rgba(255, 255, 255, 0.85);
-  border-radius: 14px;
-  padding: 10px 15px;
-  font-size: 12.5px;
-  font-weight: 800;
-  cursor: pointer;
-  box-shadow: 0 10px 26px rgba(72, 17, 115, 0.38);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  transition:
-    transform 0.16s ease,
-    box-shadow 0.16s ease;
-}
-.drawer-fab:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 14px 30px rgba(72, 17, 115, 0.48);
-}
-.drawer-fab .fab-pill {
-  background: rgba(255, 255, 255, 0.22);
-  padding: 2px 7px;
-  border-radius: 999px;
-  font-size: 10.5px;
-}
-
+/* ---------- аналитика ---------- */
 .analytics-drawer {
-  position: fixed;
-  top: 56px;
-  right: 0;
-  bottom: 0;
-  width: 460px;
-  max-width: 94vw;
-  background: #ffffff;
-  border-left: 1px solid var(--border);
-  box-shadow: -12px 0 36px rgba(15, 23, 42, 0.18);
-  z-index: 980;
-  transform: translateX(102%);
-  transition: transform 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
+  position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100vw); z-index: 1500; background: #fff;
+  box-shadow: var(--shadow-lg); transform: translateX(105%); transition: transform 0.25s ease; display: flex; flex-direction: column;
 }
-.analytics-drawer.open {
-  transform: translateX(0);
-}
-.drawer-header {
-  padding: 13px 16px;
-  background: linear-gradient(135deg, #2e094d, #5b1894);
-  color: #fff;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 10px;
-}
-.drawer-header h3 {
-  font-size: 14px;
-  font-weight: 800;
-  line-height: 1.25;
-}
-.drawer-header p {
-  font-size: 11px;
-  opacity: 0.85;
-  margin-top: 2px;
-}
-.drawer-close {
-  background: rgba(255, 255, 255, 0.16);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  color: #fff;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-.drawer-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 13px 15px 24px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  background: #f8fafc;
-}
-.inf-card {
-  background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 11px 12px;
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
-}
-.inf-title {
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.4px;
-  color: var(--wb-dark);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.inf-kpi-row {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-}
-.inf-kpi {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-  border-radius: 9px;
-  padding: 8px 9px;
-}
-.inf-kpi .k-lbl {
-  font-size: 10px;
-  color: var(--muted);
-}
-.inf-kpi .k-val {
-  font-size: 15px;
-  font-weight: 800;
-  margin-top: 2px;
-}
-.inf-kpi .k-sub {
-  font-size: 10px;
-  color: #475569;
-  margin-top: 1px;
+.analytics-drawer.open { transform: none; }
+.drawer-header { display: flex; justify-content: space-between; gap: 10px; padding: 18px 22px; border-bottom: 1px solid var(--line); }
+.drawer-header h3 { font-size: 18px; font-weight: 800; }
+.drawer-header p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+.drawer-body { overflow-y: auto; padding: 16px 22px 40px; }
+.bars { margin-top: 8px; }
+.bar-row { display: grid; grid-template-columns: 190px 1fr 90px; gap: 10px; align-items: center; font-size: 12px; margin: 4px 0; }
+.bar-label { color: #4a4058; }
+.bar-pair { display: flex; flex-direction: column; gap: 2px; }
+.bar-pair i { display: block; height: 7px; border-radius: 4px; min-width: 2px; }
+.bar-pair i.a, .bar-legend i.a { background: var(--classic); }
+.bar-pair i.b, .bar-legend i.b { background: var(--wb); }
+.bar-val { text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); }
+.bar-legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; }
+.bar-legend i { display: inline-block; width: 12px; height: 7px; border-radius: 3px; margin-right: 5px; }
+.verdict { background: var(--bg); border-radius: 12px; padding: 10px 12px; font-size: 13px; font-weight: 600; }
+.heat { display: grid; gap: 3px; margin: 12px 0; font-size: 11.5px; }
+.heat span { padding: 8px 4px; text-align: center; border-radius: 6px; font-variant-numeric: tabular-nums; }
+.heat-col, .heat-row, .heat-corner { color: var(--muted); font-weight: 700; }
+.heat-cell { font-weight: 700; color: var(--text); }
+.heat-cell.light { color: #fff; }
+.lot-panel { background: var(--bg); border-radius: 12px; padding: 10px 12px; margin-top: 6px; }
+.lot-panel h3 { font-size: 13px; }
+.lot-panel p { font-size: 12.5px; margin: 6px 0; }
+
+@media (max-width: 1280px) {
+  .workspace { grid-template-columns: 380px 1fr; }
+  .kpi-strip { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .kpi-strip .kpi:nth-child(n+4) { display: none; }
+  .brand { min-width: 0; }
+  .brand-sub { display: none; }
 }
 
-.bar-row {
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-  font-size: 11.5px;
-}
-.bar-row-top {
-  display: flex;
-  justify-content: space-between;
-  font-weight: 600;
-}
-.bar-track {
-  width: 100%;
-  height: 10px;
-  background: #e2e8f0;
-  border-radius: 999px;
-  overflow: hidden;
-}
-.bar-fill {
-  height: 100%;
-  border-radius: 999px;
-  transition: width 0.3s ease;
-}
-
-.timeline-steps {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  font-size: 11.5px;
-}
-.t-step {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 8px;
-  border-radius: 8px;
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
-}
-.t-badge {
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 6px;
-  margin-right: 6px;
-}
-
-.matrix-mini {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 11px;
-}
-.matrix-mini th,
-.matrix-mini td {
-  border: 1px solid #e2e8f0;
-  padding: 6px 7px;
-  text-align: left;
-}
-.matrix-mini th {
-  background: #f1f5f9;
-  color: var(--wb-dark);
-  font-weight: 700;
-}
-.verdict-box {
-  background: #f5f3ff;
-  border: 1px solid #ddd6fe;
-  border-radius: 10px;
-  padding: 9px 11px;
-  font-size: 11.5px;
-  line-height: 1.45;
-  color: #2e1065;
-}
-
-.audit {
-  padding: 12px;
-  background: #f8f5fa;
-  border-radius: 10px;
-  margin: 12px 0;
-  font-size: 12px;
-}
-[hidden] { display:none !important; }
-.plan-message, .lot-panel { padding:9px 12px; border-left:3px solid var(--wb-dark); background:#f6f2fa; }
-.plan-message {font-size:12px;}
-button:disabled, input:disabled {opacity:.6;cursor:default}
-.chain-banner {white-space:pre-line}
-.layer-box {position:relative;}
-#gisStatus {position:absolute; top:100%; right:0; width:180px; padding:7px; background:white; color:#38284a; border-radius:6px;}
-.preset-row {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px;
-}
-.preset-row button.active {
-  background: var(--wb-dark);
-  color: white;
-}
-#presetCaption {
-  display: block;
-  margin: 4px 0;
-}
-.audit label {
-  display: inline-block;
-  margin: 4px;
-}
-.audit input[type="number"] {
-  width: 55px;
-}
-.audit button,
-.audit select {
-  padding: 5px;
-  margin: 3px;
-}
-.summary-table {
-  font-size: 12px;
-}
-.cost-card {
-  overflow: auto;
-}
-.muted-note {
-  font-size: 11px;
-  color: var(--muted);
-}
-.event-log {
-  white-space: pre-line;
-}
-.savings-value {
-  color: #059669;
-}
-.payment-value {
-  color: #7c3aed;
-}
-.classic-line {
-  background: #2563eb;
-}
-.hybrid-line {
-  background: #d97706;
-}
-.summary-heading {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-.summary-title {
-  font-size: 17px;
-  font-weight: 800;
-}
-.summary-metrics {
-  grid-template-columns: repeat(4, 1fr);
-}
-.cost-scroll {
-  overflow: auto;
-}
-.recommendation {
-  padding: 14px 16px;
-  border-left: 4px solid #7147ad;
-  background: #f6f2fc;
-  margin-bottom: 14px;
-  border-radius: 8px;
-}
-.recommendation h3 {
-  margin: 5px 0;
-}
-#summaryTopKpis {
-  display: block;
-}
-.sc-box {
-  white-space: pre-line;
-}
-.pvz-circle {
-  width: 36px;
-  height: 36px;
-}
-.load-low {
-  background: #10b981;
-}
-.load-medium {
-  background: #f59e0b;
-}
-.load-high {
-  background: #ef4444;
-}
+/* формулы */
+.formulas summary { list-style: none; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+.formulas summary::-webkit-details-marker { display: none; }
+.formulas summary h2::after { content: " ▾"; color: var(--muted); font-size: 12px; }
+.formulas[open] summary { margin-bottom: 10px; }
+.formula { border-left: 3px solid var(--wb); background: var(--bg); border-radius: 0 10px 10px 0; padding: 8px 10px; margin-bottom: 8px; }
+.formula b { display: block; font-size: 12.5px; }
+.formula code { display: block; font: 600 12px/1.4 ui-monospace, "SF Mono", Menlo, Consolas, monospace; color: var(--wb-deep); margin: 3px 0; white-space: normal; }
+.formula small { color: var(--muted); font-size: 11.5px; }
 </style>
+
+
 
 
 
@@ -1530,431 +1108,303 @@ button:disabled, input:disabled {opacity:.6;cursor:default}
 
   </head>
   <body>
-    <header>
+    <header class="topbar">
       <div class="brand">
-        <div class="brand-badge">WB SIM</div>
-        <div>
-          <div class="brand-title">
-            Доставка WB через СЦ или ПВЗ-склад
-          </div>
-          <div class="brand-sub" id="headerSubStatus">
-            Схема по вашей карте • Йошкар-Ола ↔ Чебоксары
-          </div>
+        <div class="brand-logo">WB</div>
+        <div class="brand-text">
+          <div class="brand-title">Mesh-логистика ПВЗ</div>
+          <div class="brand-sub" id="headerSubStatus">ПВЗ по пути вместо второго сортировочного центра</div>
         </div>
       </div>
 
-      <div class="seg-group">
-        <button class="seg-btn active" id="geoLocal">
-          Йошкар-Ола (Медведево)
+      <div class="region-switch">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" id="geoLocal">Йошкар-Ола</button>
+          <button class="seg-btn" id="geoInter">Йошкар-Ола → Чебоксары</button>
+        </div>
+        <select class="select compact" id="regionSelect" aria-label="Регион"></select>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn ghost" id="drawerFab" type="button">
+          <span class="ico">📈</span> Аналитика <span class="pill" id="fabBadge">граница выгоды</span>
         </button>
-        <button class="seg-btn" id="geoInter">Йошкар-Ола ↔ Чебоксары</button>
+        <button class="btn primary" id="openSummary" type="button">Итоги смены</button>
       </div>
     </header>
 
+    <nav class="scenario-bar" aria-label="Сценарии для показа">
+      <span class="scenario-label">Сценарии</span>
+      <button class="chip" data-preset="urban"><span>🏙️</span>Городской заказ</button>
+      <button class="chip" data-preset="hub"><span>🏬</span>Хаб · рост потока</button>
+      <button class="chip" data-preset="trunk"><span>🛣️</span>Магистраль</button>
+      <button class="chip" data-preset="returns"><span>↩️</span>Возврат</button>
+      <button class="chip" data-preset="failure"><span>⚠️</span>Ошибка логистики</button>
+      <button class="chip" data-preset="longstay"><span>📦</span>Долгое хранение</button>
+      <span id="presetCaption" class="preset-caption"></span>
+    </nav>
+
     <div class="workspace">
-      <aside class="left-panel">
-        <div class="box">
-          <div class="box-head">
-            <span class="box-title"
-              >1. Демонстрация рейса (1 машина по умолчанию)</span
-            >
-            <span id="simClock" class="muted-note">Время: 00:00</span>
-          </div>
-
-          <div class="sim-controls">
-            <button class="sim-btn start" id="btnToggleSim">
-              ▶ Запустить машину
-            </button>
-            <button class="sim-btn reset" id="resetSimulation">Сброс</button>
-            <button class="sim-btn summary-open" id="openSummary">
-              📊 Сводка
-            </button>
-          </div>
-
-          <div class="sim-row">
-            <span
-              >Число машин на маршруте:
-              <strong id="truckCountLabel">1 машина (наглядно)</strong></span
-            >
-            <span id="truckLegStatus">Ожидание старта</span>
-          </div>
-          <input
-            type="range"
-            id="truckCountSlider"
-            min="1"
-            max="3"
-            step="1"
-            value="1"
-          />
-
-          <div class="sim-row">
-            <span
-              >Нагрузка сети заказов: <strong id="flowLabel">1.0×</strong></span
-            >
-            <span id="ordersCountLabel">~140 зак/ч</span>
-          </div>
-          <input
-            type="range"
-            id="flowSlider"
-            min="50"
-            max="200"
-            step="10"
-            value="100"
-          />
-
-          <p id="planStatus" class="plan-message" role="status" hidden></p>
-          <label
-            >Минута смены
-            <input id="scrub" type="range" min="0" max="480" value="0" /></label
-          ><small id="liveLog" class="event-log"></small>
-          <div class="live-stats">
-            <div class="stat-cell">
-              <div class="stat-num" id="stDelivered">0</div>
-              <div class="stat-txt">Выдано заказов</div>
-            </div>
-            <div class="stat-cell">
-              <div class="stat-num" id="stActiveTrucks">0</div>
-              <div class="stat-txt">Машин сейчас на карте</div>
-            </div>
-            <div class="stat-cell">
-              <div class="savings-value stat-num" id="stMpSaved">0 ₽</div>
-              <div class="stat-txt">
-                Δ остатка WB к классике · закрытые рейсы
-              </div>
-            </div>
-            <div class="stat-cell">
-              <div class="payment-value stat-num" id="stPvzEarned">0 ₽</div>
-              <div class="stat-txt">Начислено ПВЗ-хабам за обработку и хранение</div>
-            </div>
-          </div>
+      <aside class="side">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="route">Маршрут</button>
+          <button class="tab" data-tab="money">Экономика</button>
+          <button class="tab" data-tab="ops">Данные</button>
         </div>
 
-        <div class="box">
-          <div class="box-title">2. Конечный ПВЗ и промежуточный узел</div>
-          <label>Регион <select class="pvz-select" id="regionSelect"></select></label>
-          <details class="audit"><summary>Данные региона и дорожное покрытие</summary>
-            <p class="muted-note" id="catalogStatus"></p>
-            <p class="muted-note" id="loadDetail"></p>
-            <form id="gisConfig">
-              <label>Ключ карты 2ГИС (Raster Tiles API)
-                <input id="gisKey" type="password" autocomplete="off" required />
-              </label>
-              <button type="submit" class="seg-btn">Подключить 2ГИС</button>
-            </form>
-            <form id="regionSearch"><label>Другой город <input id="regionQuery" type="search" placeholder="Самара, Россия" required /></label>
-              <button class="seg-btn" type="submit">Найти ПВЗ</button></form>
-            <label>Подключить справочник региона <input id="regionFile" type="file" accept=".json,application/json" /></label>
-            <p id="importStatus" role="status"></p>
-            <button class="seg-btn" id="retryRoads">Обновить дороги Valhalla</button>
+        <!-- ======== TAB: маршрут ======== -->
+        <section class="tab-pane active" data-pane="route">
+          <div class="card">
+            <div class="card-head">
+              <h2><span class="step">1</span>Куда везём</h2>
+              <span class="hint" id="roadStatus" role="status"></span>
+            </div>
+            <label class="field">
+              <span>Конечный ПВЗ покупателя</span>
+              <select class="select" id="finalPvzSelect"></select>
+            </label>
+            <div class="chain" id="chainExplanation">Расчёт…</div>
+            <div class="mini-metrics">
+              <div><b id="mDirectKm">— км</b><small>через СЦ-2</small></div>
+              <div><b id="mHybridKm">— км</b><small>через ПВЗ-хаб</small></div>
+              <div><b id="mFinalLoad">—%</b><small>загрузка конечного</small></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2><span class="step">2</span>Партия</h2>
+              <span class="tag" id="packageClass"></span>
+            </div>
+            <div class="seg full" id="sizeGroup">
+              <button class="seg-btn active" data-size="small">Малая<small>25×20×10 · 2 кг</small></button>
+              <button class="seg-btn" data-size="medium">Средняя<small>40×30×20 · 7 кг</small></button>
+              <button class="seg-btn" data-size="oversize">Габарит<small>90×45×40 · 18 кг</small></button>
+            </div>
+            <div class="grid-5">
+              <label class="field"><span>Заказов</span><input type="number" id="batch" value="20" min="1" step="1" required /></label>
+              <label class="field"><span>Д, см</span><input id="dim0" type="number" step="0.1" min="0.1" value="25" required /></label>
+              <label class="field"><span>Ш, см</span><input id="dim1" type="number" step="0.1" min="0.1" value="20" required /></label>
+              <label class="field"><span>В, см</span><input id="dim2" type="number" step="0.1" min="0.1" value="10" required /></label>
+              <label class="field"><span>кг</span><input id="kg" type="number" step="0.1" min="0.1" value="2" required /></label>
+            </div>
+            <label id="bulkConsentRow" class="check warn" hidden><input id="bulkConsent" type="checkbox" /> Покупатель согласен на доставку габарита через ПВЗ (+120 ₽)</label>
+            <p class="hint">Ячейка ПВЗ 120×60×50 см, до 25 кг. Кузов 6 000 л, до 1 000 кг.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2><span class="step">3</span>Сравнение схем</h2>
+              <span class="hint">нажмите, чтобы показать на карте</span>
+            </div>
+            <button class="route-option" id="optDirect" type="button">
+              <span class="route-dot classic"></span>
+              <span class="route-body">
+                <span class="route-name">A · Базовая: СЦ-1 → СЦ-2 → ПВЗ</span>
+                <span class="route-sub" id="metaDirect">Двойная сортировка</span>
+              </span>
+              <span class="route-price" id="priceDirect">— ₽</span>
+            </button>
+            <button class="route-option active" id="optHybrid" type="button">
+              <span class="route-dot hybrid"></span>
+              <span class="route-body">
+                <span class="route-name">B · Mesh: СЦ-1 → ПВЗ-хаб → ПВЗ</span>
+                <span class="route-sub" id="metaHybrid">Пересортировка в ПВЗ по пути</span>
+              </span>
+              <span class="route-price" id="priceHybrid">— ₽</span>
+            </button>
+            <div class="decision" id="decisionCard"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2><span class="step">4</span>Смена</h2><span class="hint" id="truckLegStatus">Ожидание старта</span></div>
+            <label class="field range">
+              <span>Машин на линии <b id="truckCountLabel">1</b></span>
+              <input type="range" id="truckCountSlider" min="1" max="3" step="1" value="1" />
+            </label>
+            <label class="field range">
+              <span>Поток заказов <b id="flowLabel">1×</b> <em id="ordersCountLabel">140 зак/ч</em></span>
+              <input type="range" id="flowSlider" min="50" max="200" step="10" value="100" />
+            </label>
+          </div>
+        </section>
+
+        <!-- ======== TAB: экономика ======== -->
+        <section class="tab-pane" data-pane="money">
+          <div class="card">
+            <div class="card-head"><h2>Тарифы и ставки</h2><button class="link" id="resetTariffs" type="button">сбросить</button></div>
+            <p class="hint">Меняйте ставки — смена пересчитывается мгновенно. Это и есть финмодель MVP.</p>
+            <div class="grid-2" id="tariffGrid"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Сеть ПВЗ</h2></div>
+            <label class="field range">
+              <span>Поправка к загрузке полок <b><output id="shelfValue"></output></b></span>
+              <input id="shelfSlider" type="range" min="50" max="140" value="100" />
+            </label>
+            <label class="check"><input id="useCompetition" type="checkbox" checked /> Учитывать соседние Ozon и Яндекс Маркет</label>
+            <label class="check"><input id="stress" type="checkbox" /> Пик: все хабы заняты на 99%</label>
+          </div>
+
+          <details class="card formulas">
+            <summary><h2>Как считается выгода</h2><span class="hint">формулы модели</span></summary>
+            <div id="formulaBox"></div>
           </details>
-          <small id="roadStatus" class="muted-note" role="status"></small>
-          <select class="pvz-select" id="finalPvzSelect"></select>
 
-          <div class="chain-banner" id="chainExplanation">
-            <strong>Цепочка маршрута:</strong> расчёт...
+          <div class="card">
+            <div class="card-head"><h2>Юнит-экономика партии</h2><span class="hint">на 1 заказ</span></div>
+            <div class="cost-card" id="costSplitCard"></div>
           </div>
+        </section>
 
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <div class="metric-lbl">Без гибрида (СЦ1→СЦ2→Кон)</div>
-              <div class="metric-val" id="mDirectKm">— км</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-lbl">Гибрид (СЦ1→ПВЗ-скл→Кон)</div>
-              <div class="metric-val" id="mHybridKm">— км</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-lbl">Нагрузка конечного ПВЗ</div>
-              <div class="metric-val" id="mFinalLoad">—%</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="box-title">
-            3. Вариант логистики и распределение денег
-          </div>
-          <div class="seg-group" id="sizeGroup">
-            <button class="seg-btn active" data-size="small">Малая</button>
-            <button class="seg-btn" data-size="medium">Средняя</button>
-            <button class="seg-btn" data-size="oversize">Габаритная</button>
-          </div>
-
-          <label id="bulkConsentRow" class="muted-note" hidden><input id="bulkConsent" type="checkbox" /> Покупатель согласен на габаритный гибрид (+120 ₽)</label>
-          <div class="route-option" id="optDirect">
-            <div class="route-top">
-              <span>Вариант А (без гибрида): СЦ 1 → СЦ 2 → Конечный ПВЗ</span>
-              <span id="priceDirect">— ₽</span>
-            </div>
-            <div class="route-sub" id="metaDirect">
-              Через 2 сортировочных центра (двойная перевалка на СЦ 1 и СЦ 2)
-            </div>
-          </div>
-
-          <div class="route-option active" id="optHybrid">
-            <div class="route-top">
-              <span
-                >Вариант Б (гибрид): СЦ 1 → Гибридный ПВЗ-склад → Конечный
-                ПВЗ</span
-              >
-              <span id="priceHybrid">— ₽</span>
-            </div>
-            <div class="route-sub" id="metaHybrid">
-              Пересортировка в промежуточном ПВЗ
-            </div>
-          </div>
-
-          <section class="audit">
-            <h3>Условия эксперимента</h3>
-            <div class="preset-row">
-              <button data-preset="urban">Город</button>
-              <button data-preset="hub">Хаб</button>
-              <button data-preset="trunk">Магистраль</button>
-              <button data-preset="returns">Возврат</button>
-              <button data-preset="failure">Сбой</button>
-              <button data-preset="longstay">Хранение</button>
-            </div>
-            <span id="presetCaption" class="preset-caption"></span>
-            <label
-              >Поправка к загрузке полок <output id="shelfValue"></output
-              ><input
-                id="shelfSlider"
-                type="range"
-                min="50"
-                max="140"
-                value="100"
-            /></label>
-            <label
-              >Хранение первой партии до смены, суток
-              <input
-                id="storageDays"
-                type="number"
-                value="0"
-                min="0"
-                step="1"
-                required
-            /></label>
-            <label
-              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние Ozon и Яндекс Маркет вместе с WB</label
-            >
-            <label
-              >Заказов в партии
-              <input
-                type="number"
-                id="batch"
-                value="20"
-                min="1"
-                step="1"
-                required
-            /></label>
-            <p>Упаковка, см (Д × Ш × В), и масса, кг. Тарифная категория: <strong id="packageClass"></strong>.</p>
-            <label
-              >Д
-              <input
-                id="dim0"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="25"
-                required /></label
-            ><label
-              >Ш
-              <input
-                id="dim1"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="20"
-                required /></label
-            ><label
-              >В
-              <input
-                id="dim2"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="10"
-                required /></label
-            ><label
-              >кг
-              <input
-                id="kg"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="2"
-                required
-            /></label>
-            <p>
-              Ячейка 120 × 60 × 50 см, до 25 кг. Кузов 6000 л, до 1000 кг. Для
-              кросс-докинга резервируется весь объём партии на время обработки
-              одним сотрудником.
-            </p>
-            <label
-              ><input id="stress" type="checkbox" /> Пик: все хабы заняты на
-              99%</label
-            >
-            <label
-              >Первый рейс смены
-              <select id="incident">
+        <!-- ======== TAB: склад и данные ======== -->
+        <section class="tab-pane" data-pane="ops">
+          <div class="card">
+            <div class="card-head"><h2>Инцидент и хранение</h2></div>
+            <label class="field"><span>Первый рейс смены</span>
+              <select class="select" id="incident">
                 <option value="none">Штатный</option>
                 <option value="return">Возврат одной коробки</option>
                 <option value="error">Пересорт одной коробки</option>
-              </select></label
-            >
+              </select>
+            </label>
+            <label class="field"><span>Хранение первой партии до смены, суток</span>
+              <input id="storageDays" type="number" value="0" min="0" step="1" required />
+            </label>
             <section id="storedLot" class="lot-panel" hidden>
               <h3>Первая партия со хранения</h3><p id="lotLedger"></p>
-              <button id="showStoragePickup" type="button">К моменту отгрузки</button>
+              <button id="showStoragePickup" class="btn small" type="button">К моменту отгрузки</button>
             </section>
-            <h3>Ручной остаток продавца</h3>
-            <select id="stockPoint"></select>
-            <button data-stock="receive">Принять 10</button
-            ><button data-stock="sell">Продать 2</button
-            ><button data-stock="day">+ сутки</button>
-            <p id="stockStatus"></p>
-            <small
-              ><span id="storageRate"></span> за единицу в сутки. Запас
-              уменьшает доступную полку. Этот договор хранения учитывается
-              отдельно от перевозки.</small
-            >
-          </section>
-          <div class="cost-card" id="costSplitCard"></div>
-        </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Остаток продавца в ПВЗ</h2></div>
+            <select class="select" id="stockPoint"></select>
+            <div class="btn-row">
+              <button class="btn small" data-stock="receive">Принять 10</button>
+              <button class="btn small" data-stock="sell">Продать 2</button>
+              <button class="btn small" data-stock="day">+ сутки</button>
+            </div>
+            <p class="hint" id="stockStatus"></p>
+            <p class="hint"><span id="storageRate"></span> за единицу в сутки. Запас уменьшает доступную полку.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Данные региона</h2></div>
+            <p class="hint" id="catalogStatus"></p>
+            <p class="hint" id="loadDetail"></p>
+            <form id="regionSearch" class="inline-form"><input id="regionQuery" type="search" placeholder="Другой город: Самара, Россия" required />
+              <button class="btn small" type="submit">Найти ПВЗ</button></form>
+            <label class="field"><span>Справочник региона (JSON)</span><input id="regionFile" type="file" accept=".json,application/json" /></label>
+            <p id="importStatus" class="hint" role="status"></p>
+            <button class="btn small" id="retryRoads" type="button">Перестроить маршруты</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Карта 2ГИС</h2></div>
+            <p class="hint">Карта 2ГИС работает без ключа. Ключ Raster Tiles API (необязательно) включает фирменные тайлы v2.</p>
+            <form id="gisConfig" class="inline-form">
+              <input id="gisKey" type="password" autocomplete="off" placeholder="Ключ 2ГИС" required />
+              <button type="submit" class="btn small">Сохранить</button>
+            </form>
+          </div>
+        </section>
       </aside>
 
       <main class="map-wrap">
         <div id="map"></div>
 
-        <div class="map-top-bar">
-          <div class="map-legend-box">
-            <div class="road-legend">
-              <span
-                ><i class="classic-line line-sample"></i>Без гибрида: СЦ 1 → СЦ 2 → Конечный ПВЗ</span
-              >
-              <span
-                ><i class="hybrid-line line-sample"></i>Гибрид: СЦ 1
-                → Гибридный ПВЗ-склад → Конечный ПВЗ</span
-              >
-            </div>
-            <div class="muted-note">
-              <strong>СЦ 1</strong> — начальный склад;
-              <strong>СЦ 2</strong> — промежуточный центр; <strong>СКЛ</strong> — гибридный ПВЗ-склад;
-              <strong>КОН</strong> — конечный ПВЗ.
-            </div>
-          </div>
-
-          <div class="layer-box">
-            <button class="layer-btn" id="btn2gis">2ГИС</button>
-            <button class="layer-btn active" id="btnVec">Карта</button>
-            <button class="layer-btn" id="btnSat">Спутник</button>
-            <small id="gisStatus" role="status" hidden></small>
-          </div>
+        <div class="kpi-strip">
+          <div class="kpi"><small>Выдано</small><b id="stDelivered">0</b></div>
+          <div class="kpi accent" title="Разница остатка WB к базовой схеме по закрытым рейсам"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
+          <div class="kpi"><small>Доход ПВЗ-хабов</small><b class="payment-value" id="stPvzEarned">0 ₽</b></div>
+          <div class="kpi"><small>Через ПВЗ / СЦ-2</small><b id="stSplit">0 / 0</b></div>
+          <div class="kpi"><small>Машин в пути</small><b id="stActiveTrucks">0</b></div>
         </div>
+
+        <div class="map-legend">
+          <div><i class="line-sample classic-line"></i>A · через СЦ-2</div>
+          <div><i class="line-sample hybrid-line"></i>B · через ПВЗ-хаб</div>
+          <div><i class="dot-sample final"></i>КОН — ПВЗ покупателя</div>
+          <div><i class="dot-sample hub"></i>ХАБ — пересортировка</div>
+          <div class="legend-load"><i class="dot-sample low"></i>&lt;55% <i class="dot-sample mid"></i>&lt;78% <i class="dot-sample high"></i>полки</div>
+          <small id="gisStatus" class="map-source" role="status"></small>
+        </div>
+
+        <div class="player">
+          <button class="play" id="btnToggleSim" type="button">▶ Запустить смену</button>
+          <button class="btn ghost small" id="resetSimulation" type="button" title="В начало смены">↺</button>
+          <div class="timeline">
+            <div class="timeline-top">
+              <span id="simClock" class="clock">Смена 0:00</span>
+              <span class="speed">скорость
+                <select id="speedSelect"><option value="2">×2</option><option value="4" selected>×4</option><option value="10">×10</option><option value="30">×30</option></select>
+              </span>
+            </div>
+            <input id="scrub" type="range" min="0" max="480" value="0" aria-label="Минута смены" />
+            <div class="ticks"><span>0ч</span><span>2ч</span><span>4ч</span><span>6ч</span><span>8ч</span></div>
+          </div>
+          <details class="log">
+            <summary>Журнал</summary>
+            <small id="liveLog" class="event-log"></small>
+          </details>
+        </div>
+        <p id="planStatus" class="plan-message" role="status" hidden></p>
       </main>
     </div>
 
     <div class="modal-backdrop" id="summaryModal">
       <div class="modal-card">
-        <div class="summary-heading">
-          <h3 class="summary-title">
-            Сводка и сравнение: СЦ 1 → СЦ 2 vs Гибридный ПВЗ-склад
-          </h3>
-          <button class="close-modal-btn">Закрыть</button>
+        <div class="modal-head">
+          <div>
+            <small class="eyebrow">Итоги смены · 8 часов · одинаковый спрос и парк</small>
+            <h3>Базовая схема через СЦ-2 vs Mesh через ПВЗ</h3>
+          </div>
+          <button class="close-modal-btn" aria-label="Закрыть">✕</button>
         </div>
-
-        <div class="summary-metrics metrics-grid" id="summaryTopKpis"></div>
+        <div id="summaryHero" class="summary-hero"></div>
+        <div class="summary-metrics" id="summaryTopKpis"></div>
+        <h4 class="section-title">Нагрузка ПВЗ-хабов</h4>
+        <div id="hubLoadTable"></div>
+        <h4 class="section-title">Тариф для покупателя</h4>
         <table class="summary-table" id="summaryTable">
-          <thead>
-            <tr>
-              <th>Схема</th>
-              <th>Узлы</th>
-              <th>Базовый тариф СЦ / заказ</th>
-              <th>К оплате / заказ</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Схема</th><th>Узлы</th><th>Базовый тариф / заказ</th><th>К оплате / заказ</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Плавающая кнопка в правом нижнем углу и выезжающее боковое меню с инфографикой -->
-    <button class="drawer-fab" id="drawerFab">
-      <span>📈 Инфографика и расходы</span>
-      <span class="fab-pill" id="fabBadge">Сводка</span>
-    </button>
-
-    <aside
-      class="analytics-drawer"
-      id="analyticsDrawer"
-      aria-label="Аналитическая сводка"
-    >
+    <aside class="analytics-drawer" id="analyticsDrawer" aria-label="Аналитика">
       <div class="drawer-header">
         <div>
-          <h3>Аналитика: деньги, время и издержки</h3>
-          <p id="drawerSubtitle">
-            Сравнение «СЦ 1 → СЦ 2» и «Гибридный ПВЗ-склад»
-          </p>
+          <h3>Аналитика и граница выгодности</h3>
+          <p id="drawerSubtitle">Сравнение при одинаковом спросе и парке</p>
         </div>
         <button class="drawer-close" title="Свернуть">✕</button>
       </div>
       <div class="drawer-body" id="drawerBodyContent"></div>
     </aside>
 
-    <template id="map-credit"
-      >©
-      <a href="https://www.openstreetmap.org/copyright"
-        >OpenStreetMap contributors</a
-      >
-      · ODbL</template
-    >
-    <template id="economics-view"
-      ><div class="cost-scroll">
-        <table class="summary-table">
-          <thead>
-            <tr>
-              <th>На заказ</th>
-              <th>Через СЦ 2</th>
-              <th>Гибрид¹</th>
-            </tr>
-          </thead>
+    <template id="map-credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · ODbL</template>
+    <template id="economics-view"><div class="cost-scroll">
+        <table class="summary-table compact">
+          <thead><tr><th>На заказ</th><th>A · СЦ-2</th><th>B · Mesh¹</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <small
-        >¹ При отказе хаба применён тариф классики. В межгороде сохранён СЦ
-        Чебоксар. <span class="rate-note"></span> Таблица на заказ показывает
-        вклад до этого расхода.</small
-      ></template
-    >
-    <template id="shift-view"
-      ><section class="recommendation">
+      <small class="hint">¹ При отказе хаба применён тариф базовой схемы. <span class="rate-note"></span></small></template>
+    <template id="shift-view"><section class="recommendation">
         <small>Рекомендация по итогу смены</small>
         <h3></h3>
         <p></p>
-        <div>
-          <span data-result="direct"></span><br /><span
-            data-result="hybrid"
-          ></span>
-        </div>
+        <div class="rec-results"><span data-result="direct"></span><span data-result="hybrid"></span></div>
       </section>
-      <table class="summary-table">
-        <thead>
-          <tr>
-            <th>Смена 8 ч</th>
-            <th>Спрос</th>
-            <th>Выдано / возвраты</th>
-            <th>Не вывезено</th>
-            <th>ПВЗ · хранение</th><th>Остаток WB</th>
-          </tr>
-        </thead>
+      <table class="summary-table compact">
+        <thead><tr><th>Смена 8 ч</th><th>Спрос</th><th>Выдано / возвр.</th><th>Не вывезено</th><th>ПВЗ · хранение</th><th>Остаток WB</th></tr></thead>
         <tbody></tbody>
       </table>
-      <p>
-        Допуск рейса — машина успевает вернуться до конца смены. Невывезенный
-        спрос остаётся в очереди на конец смены. Возвраты сторнируют выручку, расходы исправления
-        оплачивает WB.
-      </p></template
-    >
+      <p class="hint">Рейс допускается, если машина успевает вернуться до конца смены. Невывезенный спрос остаётся в очереди. Возвраты сторнируют выручку, исправление оплачивает WB.</p></template>
   <script>
 /* Единый источник всех ставок. Меняете здесь — меняется везде. */
 const CONFIG = {
@@ -151795,6 +151245,245 @@ function nodeLatLng(id) {
 
 </script>
 <script>
+/* Офлайн-маршрутизация по дорожному графу OpenStreetMap.
+ * Граф строится из тех же данных, что и подложка (data/atlas.js, data/regions/streets.js):
+ * у соседних улиц общие вершины на перекрёстках, поэтому A* находит путь по реальным улицам
+ * к любому ПВЗ без внешних сервисов. Стоимость ребра — время в пути (км/ч по классу дороги). */
+const ROUTER_SPEED = {
+  motorway: 90, trunk: 75, primary: 55, secondary: 48, tertiary: 40,
+  unclassified: 32, residential: 28, living_street: 15, road: 25, service: 15,
+  motorway_link: 50, trunk_link: 45, primary_link: 40, secondary_link: 36, tertiary_link: 32,
+};
+const ROUTE_DETOUR_SNAP = 1.4; // подъезд от дороги к точке: прямая × коэффициент
+const routerGraphs = new Map();
+
+class RoadGraph {
+  constructor(data) {
+    const verts = data.vertices;
+    const n = verts.length;
+    this.lat = new Float64Array(n);
+    this.lon = new Float64Array(n);
+    for (let i = 0; i < n; i++) { this.lat[i] = verts[i][0]; this.lon[i] = verts[i][1]; }
+    const edges = [];
+    this.names = [];
+    this.vname = new Int32Array(n).fill(-1);
+    const nameIndex = new Map();
+    for (const [, name, kind, maxspeed, oneway, ids] of data.roads) {
+      if (name && kind !== "service") {
+        if (!nameIndex.has(name)) { nameIndex.set(name, this.names.length); this.names.push(name); }
+        const ni = nameIndex.get(name);
+        for (const i of ids) if (this.vname[i] < 0) this.vname[i] = ni;
+      }
+      const base = ROUTER_SPEED[kind] || 20;
+      const kmh = maxspeed > 0 ? Math.min(base, maxspeed) : base;
+      for (let k = 1; k < ids.length; k++) {
+        const a = ids[k - 1], b = ids[k];
+        if (a === b) continue;
+        const m = haversineM(verts[a], verts[b]);
+        const sec = m / (kmh / 3.6);
+        edges.push(a, b, m, sec);
+        if (!oneway) edges.push(b, a, m, sec);
+      }
+    }
+    const count = edges.length / 4;
+    const deg = new Int32Array(n + 1);
+    for (let e = 0; e < count; e++) deg[edges[e * 4] + 1]++;
+    for (let i = 0; i < n; i++) deg[i + 1] += deg[i];
+    this.start = deg;
+    this.to = new Int32Array(count);
+    this.m = new Float32Array(count);
+    this.sec = new Float32Array(count);
+    const fill = deg.slice(0, n);
+    for (let e = 0; e < count; e++) {
+      const a = edges[e * 4], slot = fill[a]++;
+      this.to[slot] = edges[e * 4 + 1];
+      this.m[slot] = edges[e * 4 + 2];
+      this.sec[slot] = edges[e * 4 + 3];
+    }
+    this.n = n;
+    this.maxSpeed = 90 / 3.6;
+    this.component = this.components();
+    // Сетка для быстрой привязки точки к ближайшей вершине главной компоненты.
+    this.cell = 0.005;
+    this.grid = new Map();
+    for (let i = 0; i < n; i++) {
+      if (this.component[i] !== this.mainComponent) continue;
+      if (this.start[i + 1] === this.start[i]) continue;
+      const key = Math.floor(this.lat[i] / this.cell) + ":" + Math.floor(this.lon[i] / this.cell);
+      let list = this.grid.get(key);
+      if (!list) this.grid.set(key, list = []);
+      list.push(i);
+    }
+  }
+
+  // Слабо связные компоненты: точки привязываются только к самой большой сети,
+  // чтобы маршрут не «застревал» на изолированном дворовом проезде.
+  components() {
+    const parent = new Int32Array(this.n);
+    for (let i = 0; i < this.n; i++) parent[i] = i;
+    const find = x => { while (parent[x] !== x) { parent[x] = parent[parent[x]]; x = parent[x]; } return x; };
+    for (let a = 0; a < this.n; a++)
+      for (let e = this.start[a]; e < this.start[a + 1]; e++) {
+        const ra = find(a), rb = find(this.to[e]);
+        if (ra !== rb) parent[ra] = rb;
+      }
+    const size = new Map();
+    const comp = new Int32Array(this.n);
+    for (let i = 0; i < this.n; i++) {
+      comp[i] = find(i);
+      if (this.start[i + 1] > this.start[i]) size.set(comp[i], (size.get(comp[i]) || 0) + 1);
+    }
+    let best = -1, bestSize = 0;
+    for (const [c, s] of size) if (s > bestSize) { best = c; bestSize = s; }
+    this.mainComponent = best;
+    return comp;
+  }
+
+  nearest(latlng, maxM = 1500) {
+    const [lat, lon] = latlng;
+    const cy = Math.floor(lat / this.cell), cx = Math.floor(lon / this.cell);
+    let best = -1, bestM = Infinity;
+    for (let r = 0; r <= 4; r++) {
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dy), Math.abs(dx)) !== r) continue;
+        for (const i of this.grid.get((cy + dy) + ":" + (cx + dx)) || []) {
+          const m = haversineM(latlng, [this.lat[i], this.lon[i]]);
+          if (m < bestM) { bestM = m; best = i; }
+        }
+      }
+      if (best >= 0 && bestM < r * this.cell * 60000) break;
+    }
+    return best >= 0 && bestM <= maxM ? {v: best, m: bestM} : null;
+  }
+
+  // Ближайшая именованная улица — для подписи ПВЗ без адреса в справочнике.
+  streetNear(latlng, maxM = 350) {
+    const [lat, lon] = latlng;
+    const cy = Math.floor(lat / this.cell), cx = Math.floor(lon / this.cell);
+    let best = -1, bestM = Infinity;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++)
+      for (const i of this.grid.get((cy + dy) + ":" + (cx + dx)) || []) {
+        if (this.vname[i] < 0) continue;
+        const m = haversineM(latlng, [this.lat[i], this.lon[i]]);
+        if (m < bestM) { bestM = m; best = i; }
+      }
+    return best >= 0 && bestM <= maxM ? this.names[this.vname[best]] : null;
+  }
+
+  // A* по времени в пути с эвристикой «прямая на максимальной скорости».
+  path(s, t) {
+    if (s === t) return [s];
+    const n = this.n, g = new Float64Array(n).fill(Infinity), prev = new Int32Array(n).fill(-1);
+    const closed = new Uint8Array(n);
+    const tl = [this.lat[t], this.lon[t]];
+    const h = v => haversineM([this.lat[v], this.lon[v]], tl) / this.maxSpeed;
+    const heap = new MinHeap();
+    g[s] = 0; heap.push(s, h(s));
+    while (heap.size) {
+      const v = heap.pop();
+      if (closed[v]) continue;
+      if (v === t) break;
+      closed[v] = 1;
+      for (let e = this.start[v]; e < this.start[v + 1]; e++) {
+        const w = this.to[e], cand = g[v] + this.sec[e];
+        if (cand < g[w]) { g[w] = cand; prev[w] = v; heap.push(w, cand + h(w)); }
+      }
+    }
+    if (!Number.isFinite(g[t])) return null;
+    const out = [];
+    for (let v = t; v !== -1; v = prev[v]) out.push(v);
+    return out.reverse();
+  }
+
+  edge(a, b) {
+    for (let e = this.start[a]; e < this.start[a + 1]; e++) if (this.to[e] === b) return e;
+    return -1;
+  }
+
+  route(from, to) {
+    const a = this.nearest(from), b = this.nearest(to);
+    if (!a || !b) return null;
+    const vertices = this.path(a.v, b.v);
+    if (!vertices) return null;
+    const snapSpeed = 12 / 3.6;
+    let sec = a.m * ROUTE_DETOUR_SNAP / snapSpeed, m = a.m * ROUTE_DETOUR_SNAP;
+    const track = [[from[0], from[1], 0]];
+    for (let i = 0; i < vertices.length; i++) {
+      const v = vertices[i];
+      if (i) { const e = this.edge(vertices[i - 1], v); sec += this.sec[e]; m += this.m[e]; }
+      else sec = a.m * ROUTE_DETOUR_SNAP / snapSpeed;
+      track.push([this.lat[v], this.lon[v], sec]);
+    }
+    sec += b.m * ROUTE_DETOUR_SNAP / snapSpeed;
+    m += b.m * ROUTE_DETOUR_SNAP;
+    track.push([to[0], to[1], sec]);
+    // Перекрёстки и светофоры: +0,5 с на вершину пути, не более 2 минут на плечо.
+    const extra = Math.min(120, vertices.length * 0.5);
+    const scale = sec > 0 ? (sec + extra) / sec : 1;
+    for (const p of track) p[2] *= scale;
+    return {km: m / 1000, sec: sec + extra, track};
+  }
+}
+
+class MinHeap {
+  constructor() { this.k = []; this.p = []; }
+  get size() { return this.k.length; }
+  push(key, pri) {
+    const k = this.k, p = this.p;
+    let i = k.length; k.push(key); p.push(pri);
+    while (i > 0) {
+      const j = (i - 1) >> 1;
+      if (p[j] <= pri) break;
+      k[i] = k[j]; p[i] = p[j]; i = j;
+    }
+    k[i] = key; p[i] = pri;
+  }
+  pop() {
+    const k = this.k, p = this.p, top = k[0];
+    const lastK = k.pop(), lastP = p.pop();
+    if (k.length) {
+      let i = 0;
+      for (;;) {
+        let c = 2 * i + 1;
+        if (c >= k.length) break;
+        if (c + 1 < k.length && p[c + 1] < p[c]) c++;
+        if (p[c] >= lastP) break;
+        k[i] = k[c]; p[i] = p[c]; i = c;
+      }
+      k[i] = lastK; p[i] = lastP;
+    }
+    return top;
+  }
+}
+
+function routerDataFor(region) {
+  if (region === "yoshkar-ola" || region === "cheboksary") return typeof atlasData !== "undefined" ? atlasData : null;
+  return typeof REGION_STREETS !== "undefined" ? REGION_STREETS[region] : null;
+}
+
+function routerFor(region) {
+  if (routerGraphs.has(region)) return routerGraphs.get(region);
+  const data = routerDataFor(region);
+  let graph = null;
+  try { graph = data ? new RoadGraph(data) : null; } catch (e) { graph = null; }
+  // Граф переиспользуется для двух пилотных регионов с общим atlasData.
+  if (region === "yoshkar-ola" || region === "cheboksary") {
+    routerGraphs.set("yoshkar-ola", graph);
+    routerGraphs.set("cheboksary", graph);
+  } else routerGraphs.set(region, graph);
+  return graph;
+}
+
+/* Оценочное плечо, когда нет ни графа, ни ответа сервиса: прямая × 1.35, 25 км/ч. */
+function estimatedLeg(key, a, b) {
+  const metres = haversineM(a, b) * 1.35;
+  const sec = metres / (25 / 3.6) + 60;
+  return {key, km: metres / 1000, min: sec / 60, source: "estimate", estimatedGeometry: true,
+    track: [[a[0], a[1], 0], [b[0], b[1], sec]]};
+}
+
+</script>
+<script>
 const BRAND_WEIGHT = { wb: 1, ozon: 0.7, ym: 0.6 };
 const densityGrid = new Map();
 const densityCache = new Map();
@@ -151905,7 +151594,26 @@ function prepareNetwork(key, catalog) {
   return {points,wb};
 }
 
+// «Wildberries · 56.1, 47.2» → «WB · Ленинский проспект»: подпись по ближайшей улице графа.
+function humanizeNames(key, points){
+  const graph = routerFor(key);
+  const used = new Map();
+  for (const p of points) {
+    if (p.brand !== "wb" || p.label) continue;
+    const raw = /^(Вайлдберриз|Wildberries)\s*·/i.test(p.name) || /\d+\.\d+,\s*\d+\.\d+$/.test(p.name);
+    let label = p.name.replace(/^(Йошкар-Ола|Чебоксары|Казань|Москва),\s*/,"");
+    if (raw) {
+      const street = graph?.streetNear(p.latlng);
+      label = street ? "у " + street.replace(/^улица /i,"ул. ") : "ПВЗ " + p.latlng.map(v=>v.toFixed(4)).join(", ");
+    }
+    const n = (used.get(label) || 0) + 1;
+    used.set(label, n);
+    p.label = n > 1 ? label + " (" + n + ")" : label;
+  }
+}
+
 function setNetwork(key, prepared=prepareNetwork(key,REGION_CATALOGS[key])){
+  humanizeNames(key, prepared.wb);
   networkPoints=prepared.points;
   PVZ_LIST.splice(0,PVZ_LIST.length,...prepared.wb);
   cityById = new Map(PVZ_LIST.map(p => [p.id, p]));
@@ -151923,6 +151631,13 @@ function candidatePoints() {
   const available = ranked.filter(([p]) => calcLoadPct(p) <= CONFIG.network.maxLoadForHub);
   for (const [p] of [...ranked.slice(0,5), ...available.slice(0,5)]) if (!base.includes(p)) base.push(p);
   return base;
+}
+
+// Показываем весь рейс: СЦ-1, СЦ-2 и конечный ПВЗ, с отступами под панели карты.
+function fitRoute(){
+  const pts=[SC_NODES.sc1.latlng,SC_NODES.sc2.latlng,cityById.get(finalPvzId)?.latlng].filter(Boolean);
+  if(geoMode==="intercity")pts.push(SC_NODES.ch.latlng);
+  map.fitBounds(pts,{paddingTopLeft:[40,110],paddingBottomRight:[260,120],maxZoom:14});
 }
 
 function configureRegion(key, catalog=REGION_CATALOGS[key]) {
@@ -151950,21 +151665,19 @@ function configureRegion(key, catalog=REGION_CATALOGS[key]) {
     }
   }
   finalPvzId = catalog.defaultId && cityById.has(catalog.defaultId) ? catalog.defaultId : PVZ_LIST[0].id;
-  savedDestinations=new Set(PVZ_LIST.filter(p=>hasSavedItinerary(roadItinerary(chain("direct",null,p.id),"none"))).map(p=>p.id));
   populateSelect();
-  el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(p.name, p.id)));
+  el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(pvzName(p), p.id)));
   el("regionSelect").value = key;
   el("geoLocal").classList.toggle("active", key === "yoshkar-ola");
   el("geoInter").classList.toggle("active", key === "cheboksary");
   const counts = {wb:0, ozon:0, ym:0};
   for (const p of networkPoints) counts[p.brand]++;
   el("catalogStatus").textContent = catalog.city + " · WB " + counts.wb + " · Ozon " + counts.ozon +
-    " · Яндекс Маркет " + counts.ym + " · " + [...new Set(networkPoints.map(p=>p.origin))].join(" / ") + " · срез "+catalog.date + ". Полный путь через СЦ офлайн: " + savedDestinations.size + " из " + PVZ_LIST.length + " адресов WB.";
+    " · Яндекс Маркет " + counts.ym + " · " + [...new Set(networkPoints.map(p=>p.origin))].join(" / ") + " · срез "+catalog.date + ". Маршруты строятся по улицам " + (routerFor(key) ? "офлайн-графом OSM." : "онлайн-сервисом с оценкой при сбое.");
   el("presetCaption").textContent = "";
   document.querySelectorAll("[data-preset]").forEach(b => b.classList.remove("active"));
   setStyleMode(styleMode);
-  if (key === "cheboksary") map.fitBounds([SC_NODES.sc1.latlng, cityById.get(finalPvzId).latlng], {padding:[40,40]});
-  else map.setView(cityById.get(finalPvzId).latlng, key === "yoshkar-ola" ? 13 : 14);
+  fitRoute();
   refreshDestination();
 }
 
@@ -152068,7 +151781,8 @@ async function searchRegion(query) {
 <script>
 const legCache = new Map();
 const endpoints = {
-  valhalla: window.VALHALLA_URL || "https://valhalla1.openstreetmap.de/route"
+  valhalla: window.VALHALLA_URL || "https://valhalla1.openstreetmap.de/route",
+  osrm: window.OSRM_URL || "https://router.project-osrm.org/route/v1/driving/"
 };
 let activeRequest;
 function legKey(a,b) {
@@ -152106,6 +151820,8 @@ function roadLeg(key, data) {
   return {key, km:data.km, min:data.sec / 60, track, source:"valhalla"};
 }
 
+const estimateCache = new Map();
+// Порядок источников: сохранённый трек Valhalla/OSRM → офлайн-граф OSM (A*) → онлайн-сервис → оценка.
 function legOf(a,b) {
   const key = a + ">" + b;
   const id = legKey(a,b);
@@ -152117,41 +151833,53 @@ function legOf(a,b) {
     const raw = roads[key];
     if (raw) leg = {key, km:raw.km, min:raw.track.at(-1)[2]/60, track:raw.track, source:"osm"};
   }
-  if (leg) legCache.set(id,leg);
-  return leg;
+  const from = nodeLatLng(a), to = nodeLatLng(b);
+  if (!leg && from && to) {
+    const graph = routerFor(regionId);
+    const r = graph?.route(from, to);
+    if (r && r.sec > 0 && r.km > 0) leg = {key, km:r.km, min:r.sec/60, track:r.track, source:"graph"};
+  }
+  if (leg) { legCache.set(id,leg); return leg; }
+  if (!from || !to) return undefined;
+  // Нет графа на этом участке: оценка не блокирует расчёт, а онлайн-запрос уточнит трек.
+  if (!estimateCache.has(id)) estimateCache.set(id, estimatedLeg(key, from, to));
+  return estimateCache.get(id);
 }
+const isEstimated = (a,b) => { legOf(a,b); return !legCache.has(legKey(a,b)); };
 
 function hasSavedItinerary(ids){
-  const pilot=regionId==="yoshkar-ola" || regionId==="cheboksary";
-  return ids.slice(1).every((b,i)=>{
-    const key=ids[i]+">"+b;
-    return REGION_ROADS[regionId]?.[key] || (pilot && roads[key]);
-  });
+  return ids.slice(1).every((b,i)=>legOf(ids[i],b));
 }
 
 function coverageFor(incident){
   const options=[chain("direct",null),...hubPool.map(p=>chain("hybrid",p))];
   const chains=options.map(ids=>roadItinerary(ids,incident));
-  return {chains,complete:chains.filter(hasItinerary).length};
+  return {chains,complete:chains.filter(ids=>ids.slice(1).every((b,i)=>!isEstimated(ids[i],b))).length};
 }
 
-async function fetchChain(ids, signal) {
-  if (ids.every((id,i) => !i || legOf(ids[i-1],id))) return;
-  const locations = ids.map(id => {
-    const [lat,lon] = nodeLatLng(id);
-    return {lat,lon,type:"break"};
-  });
-  const params = new URLSearchParams({json:JSON.stringify({locations, costing:"auto",
-    units:"kilometers", directions_type:"none", shape_format:"polyline6"})});
-  const response = await fetch(endpoints.valhalla + "?" + params,
-    {signal:AbortSignal.any([signal,AbortSignal.timeout(10000)])});
-  if (!response.ok) throw Error("Valhalla HTTP " + response.status);
-  const {trip} = await response.json();
-  if (!trip || trip.legs.length !== ids.length-1) throw Error("Неполный ответ Valhalla");
-  if (signal.aborted) return;
-  const legs = trip.legs.map((leg,i) => roadLeg(ids[i]+">"+ids[i+1],
-    {shape:leg.shape,km:leg.summary.length,sec:leg.summary.time}));
-  for (const [i,leg] of legs.entries()) if(!legOf(ids[i],ids[i+1]))legCache.set(legKey(ids[i],ids[i+1]),leg);
+async function fetchLegOnline(a, b, signal) {
+  const [la,lo]=nodeLatLng(a), [lb,lob]=nodeLatLng(b);
+  const key=a+">"+b;
+  const timeout=AbortSignal.any([signal,AbortSignal.timeout(8000)]);
+  try {
+    const params = new URLSearchParams({json:JSON.stringify({locations:[{lat:la,lon:lo},{lat:lb,lon:lob}],
+      costing:"auto", units:"kilometers", directions_type:"none", shape_format:"polyline6"})});
+    const response = await fetch(endpoints.valhalla + "?" + params, {signal:timeout});
+    if (!response.ok) throw Error("Valhalla HTTP " + response.status);
+    const {trip} = await response.json();
+    const leg = trip?.legs?.[0];
+    if (leg) return roadLeg(key,{shape:leg.shape,km:leg.summary.length,sec:leg.summary.time});
+  } catch (e) { if (signal.aborted) throw e; }
+  const url = endpoints.osrm + lo + "," + la + ";" + lob + "," + lb + "?overview=full&geometries=geojson";
+  const response = await fetch(url, {signal:AbortSignal.any([signal,AbortSignal.timeout(8000)])});
+  if (!response.ok) throw Error("OSRM HTTP " + response.status);
+  const route = (await response.json()).routes?.[0];
+  if (!route) throw Error("Нет маршрута OSRM");
+  const pts = route.geometry.coordinates.map(([x,y]) => [y,x]);
+  let dist = 0;
+  const track = pts.map((p,i) => { if (i) dist += haversineM(pts[i-1],p); return [...p, dist]; });
+  for (const p of track) p[2] = dist ? p[2]/dist*route.duration : 0;
+  return {key, km:route.distance/1000, min:route.duration/60, track, source:"osrm"};
 }
 
 async function refreshDestination() {
@@ -152162,26 +151890,33 @@ async function refreshDestination() {
   hubPool = candidatePoints();
   recalculateAll();
   const {chains}=coverageFor(el("incident").value);
-  const pending = chains.filter(ids => ids.some((b,i) => i && !legOf(ids[i-1],b)));
+  const pending = [];
+  for (const ids of chains) for (let i=1;i<ids.length;i++)
+    if (isEstimated(ids[i-1],ids[i]) && !pending.some(([a,b])=>a===ids[i-1]&&b===ids[i])) pending.push([ids[i-1],ids[i]]);
   function status() {
-    const complete = chains.filter(ids => ids.every((b,i) => !i || legOf(ids[i-1],b))).length;
-    el("roadStatus").textContent = "Цепочки с дорожным треком: " + complete + " из " + chains.length +
-      (complete < chains.length ? ". Недоступные плечи исключены." : ".");
+    const {complete} = coverageFor(el("incident").value);
+    const graph = routerFor(regionId);
+    el("roadStatus").textContent = (complete === chains.length ? "✓ " : "") + "По улицам: " + complete + "/" + chains.length +
+      (complete < chains.length ? " · остальные — оценка (пунктир)" : "");
+    el("roadStatus").title = graph ? "Маршруты строятся офлайн по графу улиц OpenStreetMap (A*), уточняются Valhalla/OSRM при наличии сети" : "Маршруты Valhalla/OSRM";
   }
   status();
   if (!pending.length) return;
-  el("roadStatus").textContent += " Запрос Valhalla…";
-  for (const ids of pending) {
+  el("roadStatus").textContent += " · уточняем онлайн…";
+  let changed = false;
+  for (const [a,b] of pending) {
     if (generation !== roadGeneration) return;
-    try { await fetchChain(ids,controller.signal); }
-    catch (e) {
+    try {
+      const leg = await fetchLegOnline(a,b,controller.signal);
+      if (leg) { legCache.set(legKey(a,b), leg); changed = true; }
+    } catch (e) {
       if (controller.signal.aborted) return;
-      // Общий сетевой сбой: сохраняем рассчитанные цепочки, оставляем повтор вручную.
       if (e instanceof TypeError || e.name === "TimeoutError" || /HTTP (429|5\d\d)/.test(e.message)) break;
     }
   }
   if (generation !== roadGeneration) return;
   status();
+  if (!changed) return;
   const time = elapsed, resume = playing;
   recalculateAll();
   if(!planIssue){
@@ -152353,7 +152088,7 @@ function applyPreset(key) {
 let geoMode = "local";
 let routeMode = "hybrid"; // 'direct' = СЦ 1 -> СЦ 2 -> Конечный ПВЗ; 'hybrid' = СЦ 1 -> Гибридный ПВЗ-склад -> Конечный ПВЗ
 let finalPvzId = "yo-1";
-let styleMode = "vector";
+let styleMode = "2gis";
 let activeChain = {
   scStart: SC_NODES.sc1,
   scMid: SC_NODES.sc2,
@@ -152365,9 +152100,10 @@ let activeChain = {
 const el = (id) => document.getElementById(id),
   val = (id) => Number(el(id).value),
   rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " ₽";
+const pvzName = p => p ? (p.label || p.name) : "";
 const nodeName = id => {
   const depot = Object.values(SC_NODES).find(p => p.id === id);
-  return depot ? depot.label.replace(/\n/g, " · ") : cityById.get(id)?.name;
+  return depot ? depot.label.replace(/\n/g, " · ") : pvzName(cityById.get(id));
 };
 const pathName = (r) => r.ids.map(nodeName).join(" → ");
 const volumes = {
@@ -152542,17 +152278,14 @@ const VectorAtlas = L.Layer.extend({
 
 </script>
 <script>
-const map = L.map("map", { zoomControl: true }).setView([56.635, 47.845], 12);
+const map = L.map("map", { zoomControl: false, preferCanvas: false }).setView([56.635, 47.845], 12);
+L.control.zoom({ position: "bottomright" }).addTo(map);
 const streetLayer = L.tileLayer(
   "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
   { maxZoom: 19, attribution: "© OpenStreetMap contributors" },
 );
-const satLayer = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 19, attribution: "&copy; Esri" },
-);
 
-const localAtlas = new VectorAtlas(atlasData).addTo(map);
+const localAtlas = new VectorAtlas(atlasData);
 const regionAtlases = new Map();
 const pointRenderer = L.canvas();
 map.attributionControl.addAttribution(
@@ -152576,18 +152309,23 @@ function plot(active = []) {
     for (const { leg } of r.phases) {
       if (!leg || drawn.has(r.mode + leg.key)) continue;
       drawn.add(r.mode + leg.key);
+      const latlngs = leg.track.map((p) => p.slice(0, 2));
+      L.polyline(latlngs, {color: "#fff", weight: 9, opacity: 0.85, interactive: false}).addTo(roadsLayer);
       L.polyline(
-        leg.track.map((p) => p.slice(0, 2)),
+        latlngs,
         {
-          color: r.mode === "hybrid" ? "#c46c12" : "#2563eb",
+          color: r.mode === "hybrid" ? "#CB11AB" : "#2F6BFF",
           weight: 5,
+          opacity: 0.9,
+          lineCap: "round",
+          lineJoin: "round",
           dashArray: leg.estimatedGeometry ? "6 8" : null,
         },
       )
         .bindTooltip(
           leg.estimatedGeometry
             ? "Схематичное плечо без дорожного трека"
-            : (leg.source==="valhalla"?"Дорожный маршрут Valhalla":"Дорожный трек OSM"),
+            : ({valhalla:"Маршрут Valhalla",osrm:"Маршрут OSRM",graph:"Маршрут по улицам · офлайн-граф OSM"}[leg.source]||"Маршрут по улицам OSM") + " · " + leg.km.toFixed(1) + " км · " + Math.round(leg.min) + " мин",
         )
         .addTo(roadsLayer);
     }
@@ -152630,7 +152368,7 @@ function renderMarkers() {
       badgeText = "КОН";
     } else if (isHub) {
       extraClass = "hub-pvz";
-      badgeText = "СКЛ";
+      badgeText = "ХАБ";
     }
 
     const icon = L.divIcon({
@@ -152643,13 +152381,15 @@ function renderMarkers() {
     const roleLabel = isFinal
       ? "КОНЕЧНЫЙ ПВЗ"
       : isHub
-        ? (mapContext.handling.has(pvz.id)?"ПВЗ-СКЛАД · обработка партии":"ПВЗ-СКЛАД рейса")
+        ? (mapContext.handling.has(pvz.id)?"ПВЗ-ХАБ · идёт пересортировка партии":"ПВЗ-ХАБ рейса")
         : "ПВЗ";
-    const m = visiblePvz.length > 350 && !isFinal && !isHub
-      ? L.circleMarker(pvz.latlng, {radius:5, color: pct > 80 ? "#bd354d" : "#7c3caa", renderer:pointRenderer})
+    const compact = (visiblePvz.length > 350 || map.getZoom() < 15) && !isFinal && !isHub;
+    const tone = pct < 55 ? "#13a36b" : pct < 78 ? "#f2a516" : "#e5484d";
+    const m = compact
+      ? L.circleMarker(pvz.latlng, {radius:6, color:"#fff", weight:2, fillColor:tone, fillOpacity:0.95, renderer:pointRenderer})
       : L.marker(pvz.latlng, {icon, zIndexOffset:isFinal ? 650 : isHub ? 600 : 0});
     const tip = document.createElement("span");
-    tip.textContent = roleLabel + " · " + pvz.name + " · модельная загрузка " + pct + "%";
+    tip.textContent = roleLabel + " · " + pvzName(pvz) + " · загрузка " + pct + "%";
     m.addTo(markersLayer).bindTooltip(tip, {direction:"top"});
     m.on("click", () => {
       el("finalPvzSelect").value = pvz.id;
@@ -152665,8 +152405,8 @@ function renderMarkers() {
   scNodesToShow.forEach((node) => {
     const icon = L.divIcon({
       className: "",
-      iconSize: [122, 32],
-      iconAnchor: [61, 16],
+      iconSize: [0, 0],
+      iconAnchor: [0, 0],
       html: markerLabel(["sc-box", node.cls], node.label),
     });
     L.marker(node.latlng, { icon })
@@ -152687,62 +152427,85 @@ function loadClass(pct) {
 
 </script>
 <script>
+/* Единая подложка карты: 2ГИС. На экране всегда ровно один слой.
+ * 1) 2ГИС Raster Tiles API v2, если задан ключ;
+ * 2) публичные тайлы 2ГИС (без ключа);
+ * 3) при отсутствии интернета — офлайн-подложка OSM из комплекта проекта.
+ * Маршруты рисуются поверх по уличному графу, поэтому совпадают с улицами подложки. */
 let gisKey = document.querySelector('meta[name="wb-sim-2gis-key"]').content.trim();
 try { gisKey = localStorage.getItem("wb-sim.2gis-key") || gisKey; } catch {}
-let gisLayer = null;
-let gisTimeout;
+let baseLayer = null, baseKind = "", gisTimeout, gisAttempt = 0;
 
-function gisStatus(message) {
-  el("gisStatus").hidden = !message;
-  el("gisStatus").textContent = message;
-}
-
-function stopGisLayer() {
-  clearTimeout(gisTimeout);
-  if (gisLayer) {
-    const previous = gisLayer;
-    gisLayer = null;
-    previous.remove();
-  }
-  gisStatus("");
-}
-
-function showGisLayer() {
-  if (gisLayer) return;
-  const layer = L.tileLayer(
+const GIS_SOURCES = {
+  keyed: () => L.tileLayer(
     "https://tile{s}.maps.2gis.com/v2/tiles/online_sd/{z}/{x}/{y}.png?key=" + encodeURIComponent(gisKey),
-    {subdomains:"01234", maxNativeZoom:18, maxZoom:19, zIndex:3,
-      attribution:'© <a href="https://2gis.ru/">2ГИС</a>'}
-  );
-  gisLayer = layer;
-  let loaded = false;
-  function fallback() {
-    if (layer !== gisLayer) return;
-    setStyleMode("vector");
-    gisStatus("2ГИС недоступен. Включена обычная карта. Для повтора нажмите «2ГИС».");
+    {subdomains: "0123", maxNativeZoom: 18, maxZoom: 19, attribution: '© <a href="https://2gis.ru/">2ГИС</a>'}),
+  public: () => L.tileLayer(
+    "https://tile{s}.maps.2gis.com/tiles?x={x}&y={y}&z={z}&v=1",
+    {subdomains: "0123", maxNativeZoom: 18, maxZoom: 19, attribution: '© <a href="https://2gis.ru/">2ГИС</a>'}),
+};
+
+function gisStatus(text, tone = "") {
+  const badge = el("gisStatus");
+  badge.textContent = text;
+  badge.dataset.tone = tone;
+}
+
+function removeBase() {
+  clearTimeout(gisTimeout);
+  if (baseLayer) { const old = baseLayer; baseLayer = null; map.removeLayer(old); }
+  for (const layer of [localAtlas, streetLayer, ...regionAtlases.values()]) map.removeLayer(layer);
+}
+
+function offlineLayer() {
+  if (["yoshkar-ola", "cheboksary"].includes(regionId)) return localAtlas;
+  if (REGION_STREETS[regionId]) {
+    if (!regionAtlases.has(regionId)) regionAtlases.set(regionId, new VectorAtlas(REGION_STREETS[regionId]));
+    return regionAtlases.get(regionId);
   }
-  layer.on("loading", () => {
-    if (layer !== gisLayer) return;
-    loaded = false;
-    gisStatus("Загрузка 2ГИС…");
-    clearTimeout(gisTimeout);
-    gisTimeout = setTimeout(fallback, 12000);
-  });
+  return streetLayer;
+}
+
+function showOffline(reason) {
+  removeBase();
+  baseKind = "offline";
+  baseLayer = offlineLayer();
+  baseLayer.addTo(map);
+  gisStatus("Офлайн-карта OSM" + (reason ? " · " + reason : ""), "warn");
+}
+
+function showGis(kind = gisKey ? "keyed" : "public") {
+  removeBase();
+  const attempt = ++gisAttempt;
+  const layer = GIS_SOURCES[kind]();
+  baseLayer = layer; baseKind = "2gis-" + kind;
+  let ok = 0, failed = 0;
+  const fail = () => {
+    if (attempt !== gisAttempt || layer !== baseLayer) return;
+    if (kind === "keyed") return showGis("public");
+    showOffline("2ГИС недоступен");
+  };
+  gisStatus("Загрузка карты 2ГИС…");
+  gisTimeout = setTimeout(() => { if (!ok) fail(); }, 9000);
   layer.on("tileload", () => {
-    if (layer !== gisLayer) return;
-    loaded = true;
-    clearTimeout(gisTimeout);
-    gisStatus("");
+    if (layer !== baseLayer) return;
+    if (!ok++) { clearTimeout(gisTimeout); gisStatus("Карта 2ГИС", "ok"); }
   });
-  layer.on("tileerror", event => { event.tile.style.visibility = "hidden"; });
-  // Leaflet still uses the map after emitting "load". Remove the layer on the next turn.
-  layer.on("load", () => {
-    if (!loaded && layer === gisLayer) {
-      clearTimeout(gisTimeout);
-      gisTimeout = setTimeout(fallback, 0);
-    }
+  layer.on("tileerror", () => {
+    if (layer !== baseLayer) return;
+    // Несколько ошибок подряд без единого тайла — ключ или сеть недоступны.
+    if (++failed >= 6 && !ok) { clearTimeout(gisTimeout); setTimeout(fail, 0); }
   });
   layer.addTo(map);
+}
+
+function stopGisLayer() { removeBase(); }
+
+// Совместимость со старым API: любой режим приводит к одной подложке 2ГИС.
+function setStyleMode() {
+  if (baseKind.startsWith("2gis") && baseLayer && map.hasLayer(baseLayer)) return;
+  if (baseKind === "offline") return showOffline("2ГИС недоступен");
+  showGis();
 }
 
 </script>
@@ -153246,10 +153009,10 @@ function report() {
     ["direct", classic],
     ["hybrid", hybrid],
   ]) {
-    const name = key === "direct" ? "СЦ" : "Гибрид",
+    const name = key === "direct" ? "A · СЦ-2" : "B · Mesh",
       demand = runs[key].demand;
     view.querySelector('[data-result="' + key + '"]').textContent =
-      (key === "direct" ? "Через СЦ" : name) +
+      (key === "direct" ? "A · через СЦ-2" : "B · Mesh через ПВЗ") +
       ": " +
       label(m.margin) +
       " · выдано " +
@@ -153288,7 +153051,7 @@ function report() {
 function renderAnalyticsDrawer() {
   el("drawerSubtitle").textContent =
     "Сравнение при одинаковом спросе и парке машин";
-  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [econTable(),report()]));
+  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [report(), costBars(), sweepView()]));
 }
 function toggleAnalyticsDrawer() {
   drawerOpen = !drawerOpen;
@@ -153303,15 +153066,270 @@ function openSummaryModal() {
   el("summaryTable").hidden=Boolean(planIssue);
   if(!planIssue)for (const [key, r] of Object.entries(previews))
     addRow(body, [
-      key === "direct" ? "Классика" : "Гибрид",
+      key === "direct" ? "A · через СЦ-2" : "B · Mesh",
       r ? pathName(r) : "Доставка недоступна",
       r ? rub(r.referencePrice) : "—",
       r ? rub(r.price) : "—",
     ]);
+  renderSummaryExtras();
   el("summaryModal").classList.add("open");
 }
 function closeSummaryModal() {
   el("summaryModal").classList.remove("open");
+}
+
+</script>
+<script>
+/* Пояснения к расчёту: вкладки, редактор тарифов, разбор решения по партии,
+ * итоги смены (партии/коробки через ПВЗ и СЦ-2, пробег, нагрузка хабов) и граница выгодности. */
+const fmtInt = n => Math.round(n).toLocaleString("ru-RU");
+const fmtRub = n => fmtInt(n) + " ₽";
+const signRub = n => (n > 0 ? "+" : n < 0 ? "−" : "") + fmtInt(Math.abs(n)) + " ₽";
+function h(tag, attrs = {}, ...children) {
+  const node = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (k === "class") node.className = v;
+    else if (k === "style") node.style.cssText = v;
+    else node.setAttribute(k, v);
+  }
+  for (const c of children.flat()) if (c !== null && c !== undefined && c !== false) node.append(c);
+  return node;
+}
+
+/* ---------- вкладки ---------- */
+for (const tab of document.querySelectorAll(".tab")) tab.addEventListener("click", () => {
+  for (const t of document.querySelectorAll(".tab")) t.classList.toggle("active", t === tab);
+  for (const p of document.querySelectorAll(".tab-pane")) p.classList.toggle("active", p.dataset.pane === tab.dataset.tab);
+  document.querySelector(".side").scrollTop = 0;
+});
+
+/* ---------- редактор тарифов (финмодель) ---------- */
+const TARIFFS = [
+  {key: "hubPerBox", label: "Выплата ПВЗ-хабу, ₽/коробка", get: () => CONFIG.hubPerBox.small,
+    set: v => { for (const k in CONFIG.hubPerBox) CONFIG.hubPerBox[k] = v; }},
+  {key: "sc2PerBox", label: "Сортировка на СЦ-2, ₽/коробка", get: () => CONFIG.sc2PerBox, set: v => CONFIG.sc2PerBox = v},
+  {key: "perKm", label: "Пробег, ₽/км", get: () => CONFIG.perKm, set: v => CONFIG.perKm = v},
+  {key: "perMin", label: "Машина и водитель, ₽/мин", get: () => CONFIG.perMin, set: v => CONFIG.perMin = v},
+  {key: "exitFee", label: "Выход машины, ₽/рейс", get: () => CONFIG.exitFee, set: v => CONFIG.exitFee = v},
+  {key: "finalPvzPerBox", label: "Выдача в ПВЗ, ₽/заказ", get: () => CONFIG.finalPvzPerBox, set: v => CONFIG.finalPvzPerBox = v},
+  {key: "hubWorkPerMin", label: "Труд сотрудника ПВЗ, ₽/мин", get: () => CONFIG.hubWorkPerMin, set: v => CONFIG.hubWorkPerMin = v},
+  {key: "maxLoad", label: "Порог загрузки хаба, %", get: () => CONFIG.network.maxLoadForHub, set: v => CONFIG.network.maxLoadForHub = v},
+];
+const TARIFF_DEFAULTS = Object.fromEntries(TARIFFS.map(t => [t.key, t.get()]));
+function renderTariffs() {
+  el("tariffGrid").replaceChildren(...TARIFFS.map(t => {
+    const input = h("input", {type: "number", min: "0", step: t.key === "perMin" ? "0.1" : "1", id: "cfg-" + t.key});
+    input.value = t.get();
+    input.addEventListener("input", () => {
+      const v = Number(input.value);
+      if (!Number.isFinite(v) || v < 0) return;
+      t.set(v);
+      input.classList.toggle("changed", v !== TARIFF_DEFAULTS[t.key]);
+      updateParameters();
+    });
+    return h("label", {class: "field"}, h("span", {}, t.label), input);
+  }));
+}
+renderTariffs();
+el("resetTariffs").addEventListener("click", () => {
+  for (const t of TARIFFS) t.set(TARIFF_DEFAULTS[t.key]);
+  renderTariffs();
+  updateParameters();
+});
+
+/* ---------- разбор решения по первой партии ---------- */
+function hubDiagnostics() {
+  const n = manifest(), incident = el("incident").value, days = val("storageDays");
+  const base = trip("direct", null, n, 0, incident, days);
+  if (!base) return null;
+  const sizeOk = fits();
+  const consentOk = parcelCategory() !== "oversize" || el("bulkConsent").checked;
+  const rows = [];
+  for (const p of hubPool) {
+    const r = trip("hybrid", p, n, 0, incident, days);
+    if (!r) continue;
+    const arrival = r.res.find(v => v.work > 0)?.a ?? 0;
+    const load = calcLoadPct(p, 0);
+    const shelf = room(p, 0);
+    const need = n * volume();
+    const work = r.res.reduce((s, v) => s + v.work, 0);
+    priceHybrid(r, base);
+    const checks = [
+      {ok: sizeOk, text: "Габариты коробки проходят в ячейку"},
+      {ok: consentOk, text: "Согласие покупателя на габарит", hide: parcelCategory() !== "oversize"},
+      {ok: load <= CONFIG.network.maxLoadForHub, text: "Загрузка " + load + "% ≤ порога " + CONFIG.network.maxLoadForHub + "%"},
+      {ok: need <= shelf.litres, text: "Место на полке: нужно " + fmtInt(need) + " л, свободно " + fmtInt(shelf.litres) + " л"},
+      {ok: work <= shelf.minutes + 1e-9 && canReserve(p, r.res, []), text: "Сотрудник успевает: " + work.toFixed(1) + " из " + fmtInt(shelf.minutes) + " свободных мин/ч"},
+      {ok: !slaBreach(r.eta - base.eta), text: "Срок: " + signMin(r.eta - base.eta) + " к базовой схеме (допуск +" + CONFIG.sla.maxExtraMin + " мин)"},
+      {ok: r.pvzHub + r.pvzStorage >= hubLabour(r), text: "ПВЗ в плюсе: выплата " + fmtRub(r.pvzHub) + " ≥ труд " + fmtRub(hubLabour(r))},
+      {ok: r.margin >= base.margin, text: "Дешевле СЦ-2 для WB: " + signRub(r.margin - base.margin) + " на партию"},
+    ].filter(c => !c.hide);
+    rows.push({p, r, checks, passed: checks.every(c => c.ok), delta: r.margin - base.margin, arrival});
+  }
+  rows.sort((a, b) => (b.passed - a.passed) || (b.delta - a.delta));
+  return {base, rows};
+}
+const signMin = m => (m >= 0 ? "+" : "−") + Math.abs(Math.round(m)) + " мин";
+
+function renderDecision() {
+  const box = el("decisionCard");
+  if (planIssue) { box.replaceChildren(); return; }
+  const d = hubDiagnostics();
+  if (!d || !d.rows.length) {
+    box.replaceChildren(h("div", {class: "decision-head bad"}, "Нет ПВЗ по пути с маршрутом — партия идёт через СЦ-2"));
+    return;
+  }
+  const best = d.rows[0];
+  const ok = d.rows.filter(r => r.passed).length;
+  const head = best.passed
+    ? h("div", {class: "decision-head good"}, h("b", {}, "✓ Партия идёт через ПВЗ-хаб"), h("span", {}, pvzName(best.p)), h("em", {}, "экономия " + fmtRub(best.delta) + " на партию"))
+    : h("div", {class: "decision-head bad"}, h("b", {}, "✕ Партия идёт через СЦ-2"), h("span", {}, "лучший кандидат: " + pvzName(best.p)), h("em", {}, best.checks.find(c => !c.ok)?.text || ""));
+  box.replaceChildren(
+    head,
+    h("ul", {class: "checklist"}, best.checks.map(c => h("li", {class: c.ok ? "ok" : "no"}, c.text))),
+    h("div", {class: "hint"}, "Проверено ПВЗ по пути: " + d.rows.length + " · прошли все условия: " + ok + ". Правило: хаб выбирается, если проходит все ограничения и даёт WB больше, чем СЦ-2."),
+  );
+}
+
+/* ---------- живые KPI ---------- */
+function renderLiveExtras() {
+  const run = runs[routeMode];
+  if (!run) { el("stSplit").textContent = "—"; return; }
+  let hub = 0, sc = 0;
+  for (const r of run.trips) if (r.start <= elapsed) (r.mode === "hybrid" ? hub++ : sc++);
+  el("stSplit").textContent = hub + " / " + sc;
+}
+
+/* ---------- итоги смены ---------- */
+function shiftStats(mode) {
+  const run = runs[mode];
+  const s = {trips: run.trips.length, viaHub: 0, viaSc: 0, boxesHub: 0, boxesSc: 0, km: 0, minutes: 0, costs: 0, hubs: new Map()};
+  for (const r of run.trips) {
+    s.km += r.km; s.minutes += r.end - r.start; s.costs += r.costs;
+    if (r.mode === "hybrid") {
+      s.viaHub++; s.boxesHub += r.n;
+      const row = s.hubs.get(r.hub.id) || {p: r.hub, batches: 0, boxes: 0, pay: 0, work: 0, litres: 0};
+      row.batches++; row.boxes += r.n; row.pay += r.pvzHub + r.pvzStorage; row.work += hubLabour(r) / CONFIG.hubWorkPerMin;
+      row.litres = Math.max(row.litres, r.n * volume());
+      s.hubs.set(r.hub.id, row);
+    } else { s.viaSc++; s.boxesSc += r.n; }
+  }
+  return s;
+}
+
+function kpiTile(label, value, sub, tone = "") {
+  return h("div", {class: "big-kpi " + tone}, h("small", {}, label), h("b", {}, value), sub ? h("em", {}, sub) : null);
+}
+
+function renderSummaryExtras() {
+  const hero = el("summaryHero"), hubs = el("hubLoadTable");
+  if (planIssue || !runs.direct || !runs.hybrid) { hero.replaceChildren(); hubs.replaceChildren(); return; }
+  const A = shiftStats("direct"), B = shiftStats("hybrid");
+  const mA = metrics("direct", CONFIG.shiftMinutes), mB = metrics("hybrid", CONFIG.shiftMinutes);
+  const saved = mB.margin - mA.margin;
+  const baseCost = A.costs + CONFIG.shiftFixed;
+  const pct = baseCost ? saved / baseCost * 100 : 0;
+  hero.replaceChildren(
+    kpiTile("Эффект для WB за смену", signRub(saved), (pct >= 0 ? "−" : "+") + Math.abs(pct).toFixed(1) + "% к затратам базовой схемы", saved >= 0 ? "good" : "bad"),
+    kpiTile("Партий через ПВЗ / СЦ-2", B.viaHub + " / " + B.viaSc, fmtInt(B.boxesHub) + " коробок обошли СЦ-2"),
+    kpiTile("Пробег машин", fmtInt(B.km) + " км", signKm(B.km - A.km) + " к базовой (" + fmtInt(A.km) + " км)"),
+    kpiTile("Время в рейсах", fmtInt(B.minutes) + " мин", signMinPlain(B.minutes - A.minutes) + " к базовой"),
+    kpiTile("Выдано заказов", mB.issued + "", (mB.issued - mA.issued >= 0 ? "+" : "") + (mB.issued - mA.issued) + " к базовой (" + mA.issued + ")"),
+    kpiTile("Заработали ПВЗ-хабы", fmtRub(mB.pvzHub + mB.pvzStorage), "за пересортировку и хранение"),
+  );
+  if (!B.hubs.size) { hubs.replaceChildren(h("p", {class: "hint"}, "Ни одна партия не ушла через ПВЗ: при текущих условиях СЦ-2 выгоднее или хабы не прошли ограничения.")); return; }
+  const table = h("table", {class: "summary-table compact"},
+    h("thead", {}, h("tr", {}, ["ПВЗ-хаб", "Партий", "Коробок", "Работа, мин", "Пик полки", "Заработок"].map(t => h("th", {}, t)))),
+    h("tbody", {}, [...B.hubs.values()].sort((a, b) => b.boxes - a.boxes).map(r => h("tr", {},
+      h("td", {}, pvzName(r.p)), h("td", {}, r.batches + ""), h("td", {}, r.boxes + ""), h("td", {}, r.work.toFixed(0)),
+      h("td", {}, h("span", {class: "bar"}, h("i", {style: "width:" + Math.min(100, r.litres / CONFIG.shelfLitres * 100) + "%"})), " " + fmtInt(r.litres) + " л"),
+      h("td", {}, fmtRub(r.pay))))));
+  hubs.replaceChildren(table);
+}
+const signKm = k => (k > 0 ? "+" : k < 0 ? "−" : "") + fmtInt(Math.abs(k)) + " км";
+const signMinPlain = m => (m > 0 ? "+" : m < 0 ? "−" : "") + fmtInt(Math.abs(m)) + " мин";
+
+/* ---------- граница выгодности (sweep) ---------- */
+let lastSweep = null;
+function sweepView() {
+  const wrap = h("section", {class: "sweep"});
+  const run = h("button", {class: "btn primary small", type: "button"}, lastSweep ? "Пересчитать" : "Построить карту выгодности");
+  wrap.append(
+    h("h4", {class: "section-title"}, "Где проходит граница выгодности"),
+    h("p", {class: "hint"}, "24 смены: тариф ПВЗ-хаба × заполненность полок. Партия 20, поток 1×, 2 машины. Цвет — эффект Mesh-схемы для WB за смену."),
+    run);
+  run.addEventListener("click", () => {
+    run.disabled = true; run.textContent = "Считаем…";
+    setTimeout(() => {
+      try { lastSweep = sweepMatrix(); } catch (e) { lastSweep = {error: e.message}; }
+      renderAnalyticsDrawer();
+    }, 30);
+  });
+  if (lastSweep?.error) wrap.append(h("p", {class: "plan-message"}, lastSweep.error));
+  else if (lastSweep) {
+    const fees = [...new Set(lastSweep.map(r => r["тариф ПВЗ"]))];
+    const loads = [...new Set(lastSweep.map(r => r["полки %"]))];
+    const max = Math.max(1, ...lastSweep.map(r => Math.abs(r["экономия ₽"] || 0)));
+    const grid = h("div", {class: "heat", style: "grid-template-columns: 70px repeat(" + fees.length + ",1fr)"});
+    grid.append(h("span", {class: "heat-corner"}, "полки \\ ₽"), ...fees.map(f => h("span", {class: "heat-col"}, f + " ₽")));
+    for (const l of loads) {
+      grid.append(h("span", {class: "heat-row"}, l + "%"));
+      for (const f of fees) {
+        const r = lastSweep.find(x => x["тариф ПВЗ"] === f && x["полки %"] === l);
+        const v = r["экономия ₽"];
+        const a = v === null ? 0 : Math.min(1, Math.abs(v) / max);
+        const bg = v === null ? "#eee" : v > 0 ? `rgba(203,17,171,${0.12 + a * 0.78})` : v < 0 ? `rgba(120,120,140,${0.1 + a * 0.4})` : "#f1eef6";
+        grid.append(h("span", {class: "heat-cell" + (v > 0 && a > 0.5 ? " light" : ""), style: "background:" + bg, title: r["рейсов через ПВЗ"] + " рейсов через ПВЗ"},
+          v === null ? "—" : signRub(v)));
+      }
+    }
+    const wins = lastSweep.filter(r => r["экономия ₽"] > 0);
+    const maxFee = wins.length ? Math.max(...wins.map(r => r["тариф ПВЗ"])) : null;
+    const maxLoad = wins.length ? Math.max(...wins.map(r => r["полки %"])) : null;
+    wrap.append(grid, h("p", {class: "verdict"}, wins.length
+      ? "Mesh выгоден в " + wins.length + " из " + lastSweep.length + " сценариев: при тарифе хаба до " + maxFee + " ₽/коробка и загрузке полок до " + maxLoad + "%. Выше порога " + CONFIG.network.maxLoadForHub + "% хаб исключается — партия уходит на СЦ-2."
+      : "При текущих ставках Mesh-схема не выигрывает ни в одном сценарии — снизьте тариф хаба или поднимите стоимость СЦ-2."));
+  }
+  return wrap;
+}
+
+/* ---------- разбивка затрат на заказ (горизонтальные бары) ---------- */
+function costBars() {
+  const A = previews.direct, B = previews.hybrid;
+  if (!A || !B) return h("div");
+  const labels = [...new Set([...Object.keys(A.rows), ...Object.keys(B.rows)])];
+  const max = Math.max(...labels.map(k => Math.max((A.rows[k] || 0) / A.n, (B.rows[k] || 0) / B.n)), 1);
+  const wrap = h("section", {class: "bars"}, h("h4", {class: "section-title"}, "Из чего складываются затраты WB на заказ"));
+  for (const k of labels) {
+    const a = (A.rows[k] || 0) / A.n, b = (B.rows[k] || 0) / B.n;
+    wrap.append(h("div", {class: "bar-row"},
+      h("span", {class: "bar-label"}, k),
+      h("span", {class: "bar-pair"},
+        h("i", {class: "a", style: "width:" + (a / max * 100) + "%"}), h("i", {class: "b", style: "width:" + (b / max * 100) + "%"})),
+      h("span", {class: "bar-val"}, Math.round(a) + " / " + Math.round(b) + " ₽")));
+  }
+  wrap.append(h("div", {class: "bar-legend"}, h("span", {}, h("i", {class: "a"}), "A · СЦ-2"), h("span", {}, h("i", {class: "b"}), "B · Mesh")),
+    h("p", {class: "verdict"}, "Итого на заказ: A " + rub(Math.round(A.costs / A.n)) + " · B " + rub(Math.round(B.costs / B.n)) + " · разница " + signRub((A.costs / A.n - B.costs / B.n))));
+  return wrap;
+}
+
+/* ---------- формулы модели с текущими ставками ---------- */
+function renderFormulas() {
+  const box = el("formulaBox");
+  if (!box) return;
+  const c = CONFIG, cat = parcelCategory();
+  const f = (title, expr, note) => h("div", {class: "formula"}, h("b", {}, title), h("code", {}, expr), note ? h("small", {}, note) : null);
+  box.replaceChildren(
+    f("Затраты A (через СЦ-2)", "СЦ-1·n + СЦ-2·n + выход + км·₽/км + мин·₽/мин + выдача·n",
+      c.sc1PerBox + "·n + " + c.sc2PerBox + "·n + " + c.exitFee + " + км·" + c.perKm + " + мин·" + c.perMin + " + " + c.finalPvzPerBox + "·n"),
+    f("Затраты B (через ПВЗ-хаб)", "СЦ-1·n + хаб·n + выход + км·₽/км + мин·₽/мин + выдача·n",
+      "хаб = " + c.hubPerBox[cat] + " ₽/коробка" + (cat === "oversize" ? " + габарит " + (c.bulk.hub + c.bulk.loader) + " ₽" : "") + "; км и минуты — по реальным улицам, включая обратный путь и остановку"),
+    f("Допуск ПВЗ", "габарит ✓ ∧ загрузка ≤ " + c.network.maxLoadForHub + "% ∧ n·V ≤ свободно ∧ работа ≤ свободные мин/ч ∧ ΔSLA ≤ " + c.sla.maxExtraMin + " мин",
+      "место и время сотрудника резервируются на время обработки и уменьшаются для следующих партий"),
+    f("Цена покупателю", "база + " + c.distanceShare + "·₽/км·км/n − скидка", "скидка = " + c.buyerSavingsShare * 100 + "% от экономии WB на заказ; компенсация " + c.sla.rubPerHour + " ₽/ч задержки сверх " + c.sla.freeMinutes + " мин"),
+    f("Выбор", "B, если допуск ✓ и вклад_B ≥ вклад_A; иначе A", "вклад = выручка − затраты; из всех хабов по пути берётся лучший"),
+    f("Эффект смены", "Σ вклад_B − Σ вклад_A", "постоянные " + c.shiftFixed + " ₽/смена одинаковы в обеих схемах"),
+  );
 }
 
 </script>
@@ -153369,9 +153387,9 @@ function updateClock(force=false) {
     let m = L.marker(pos, {
       icon: L.divIcon({
         className: "",
-        html: "🚚",
-        iconSize: [24, 24],
-        iconAnchor: p.leg ? [12, 12] : [12, 35],
+        html: '<div class="truck' + (r.mode === "hybrid" ? " hybrid" : "") + '"><span>' + r.van + '</span></div>',
+        iconSize: [30, 30],
+        iconAnchor: p.leg ? [15, 15] : [15, 38],
       }),
       zIndexOffset: 900,
     })
@@ -153408,12 +153426,14 @@ function updateClock(force=false) {
   plot(current);
   updateMapContext(current,force);
   renderOpeningLot();
+  renderLiveExtras();
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {
   playing = false;
   cancelAnimationFrame(frame);
-  el("btnToggleSim").textContent = "▶ Запустить машины";
+  el("btnToggleSim").classList.remove("playing");
+  el("btnToggleSim").textContent = elapsed >= CONFIG.shiftMinutes ? "↻ Сначала" : elapsed > 0 ? "▶ Продолжить" : "▶ Запустить смену";
 }
 function resetSimulation() {
   stopClock();
@@ -153424,7 +153444,7 @@ function animate(now) {
   if (!playing) return;
   elapsed = Math.min(
     CONFIG.shiftMinutes,
-    elapsed + Math.min(0.5, (now - previous) / 1000) * 4,
+    elapsed + Math.min(0.5, (now - previous) / 1000) * (Number(el("speedSelect")?.value) || 4),
   );
   previous = now;
   updateClock();
@@ -153437,7 +153457,7 @@ function toggleSimulation() {
   if (elapsed >= CONFIG.shiftMinutes) elapsed = 0;
   playing = true;
   previous = performance.now();
-  el("btnToggleSim").textContent = "⏸ Пауза";
+  el("btnToggleSim").textContent = "⏸ Пауза";el("btnToggleSim").classList.add("playing");
   frame = requestAnimationFrame(animate);
 }
 
@@ -153483,7 +153503,7 @@ function setUnavailable(message){
   el("truckLegStatus").textContent="Ожидание расчёта";
   el("liveLog").textContent="";el("chainExplanation").textContent=message;
   el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
-  el("storedLot").hidden=true;
+  el("storedLot").hidden=true;renderDecision();el("stSplit").textContent="—";
   trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
@@ -153528,7 +153548,7 @@ function recalculateAll(){
   el("headerSubStatus").textContent="Диспетчер WB · модель смены · координаты СЦ сценарные";
   el("ordersCountLabel").textContent=Math.round(140*val("flowSlider")/100)+" зак/ч";
   el("shelfValue").textContent=(val("shelfSlider")-100)+" п.п.";
-  el("flowLabel").textContent=val("flowSlider")/100+"×";
+  el("flowLabel").textContent=(val("flowSlider")/100).toLocaleString("ru-RU")+"×";
   el("truckCountLabel").textContent=val("truckCountSlider");
   renderManualStock();renderLoadDetail(final);
   const n=manifest(),incident=el("incident").value;
@@ -153553,21 +153573,22 @@ function recalculateAll(){
     h.premium ? "Тариф СЦ "+rub(h.referencePrice)+" + доплата "+rub(h.premium)+(h.compPerOrder?" − компенсация "+rub(h.compPerOrder):"")+" = "+rub(h.price)+" / заказ." : "К оплате с учётом скидки и SLA: "+rub(h.price)+" / заказ.";
   el("costSplitCard").replaceChildren(econTable());
   updateClock(true);
+  renderDecision();
+  renderFormulas();
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
 }
 
 function populateSelect(){
-  const local=document.createElement("optgroup"), online=document.createElement("optgroup");
-  local.label="Через СЦ офлайн · "+savedDestinations.size;
-  online.label="Остальные адреса · дороги по сети";
-  for(const p of PVZ_LIST)(savedDestinations.has(p.id)?local:online).append(new Option(p.name,p.id));
-  el("finalPvzSelect").replaceChildren(...[local,online].filter(g=>g.children.length));
+  const sorted=[...PVZ_LIST].sort((a,b)=>pvzName(a).localeCompare(pvzName(b),"ru"));
+  el("finalPvzSelect").replaceChildren(...sorted.map(p=>new Option(pvzName(p),p.id)));
   el("finalPvzSelect").value=finalPvzId;
 }
 
 function onFinalPvzChange() {
   finalPvzId = document.getElementById("finalPvzSelect").value;
+  const p = cityById.get(finalPvzId);
+  if (p && !map.getBounds().pad(-0.15).contains(p.latlng)) fitRoute();
   refreshDestination();
 }
 
@@ -153588,40 +153609,10 @@ function setRouteMode(mode) {
   if(!planIssue)updateClock(true);
 }
 
-function setStyleMode(m) {
-  if (m === "2gis" && !gisKey) {
-    const field = el("gisKey");
-    field.closest("details").open = true;
-    field.focus();
-    return;
-  }
-  if (m !== "2gis") stopGisLayer();
-  styleMode = m;
-  el("btn2gis").classList.toggle("active", m === "2gis");
-  document.getElementById("btnVec").classList.toggle("active", m === "vector");
-  document
-    .getElementById("btnSat")
-    .classList.toggle("active", m === "satellite");
-  const nativeAtlas = ["yoshkar-ola","cheboksary"].includes(regionId);
-  if (REGION_STREETS[regionId] && !regionAtlases.has(regionId))
-    regionAtlases.set(regionId, new VectorAtlas(REGION_STREETS[regionId]));
-  const background = nativeAtlas ? localAtlas : regionAtlases.get(regionId);
-  const visible = m === "satellite" ? [satLayer] :
-    [background, !nativeAtlas && m === "vector" ? streetLayer : null].filter(Boolean);
-  for (const layer of [satLayer, streetLayer, localAtlas, ...regionAtlases.values()]) {
-    if (!visible.includes(layer)) map.removeLayer(layer);
-  }
-  for (const layer of visible) layer.addTo(map);
-  if (m === "2gis") showGisLayer();
-  setTimeout(() => map.invalidateSize(), 100);
-}
-
 </script>
 <script>
 el("geoLocal").addEventListener("click", () => setGeo("local"));
 el("geoInter").addEventListener("click", () => setGeo("intercity"));
-el("btnVec").addEventListener("click", () => setStyleMode("vector"));
-el("btn2gis").addEventListener("click", () => setStyleMode("2gis"));
 el("gisConfig").addEventListener("submit", event => {
   event.preventDefault();
   const value = el("gisKey").value.trim();
@@ -153630,9 +153621,8 @@ el("gisConfig").addEventListener("submit", event => {
   gisKey = value;
   try { localStorage.setItem("wb-sim.2gis-key", value); } catch {}
   el("gisKey").value = "";
-  setStyleMode("2gis");
+  showGis();
 });
-el("btnSat").addEventListener("click", () => setStyleMode("satellite"));
 el("optHybrid").addEventListener("click", () => setRouteMode("hybrid"));
 el("optDirect").addEventListener("click", () => setRouteMode("direct"));
 el("btnToggleSim").addEventListener("click", toggleSimulation);
@@ -153672,7 +153662,7 @@ el("storageRate").textContent = rub(CONFIG.storagePerBoxDay);
 el("scrub").max = CONFIG.shiftMinutes;
 function regionOptions() {
   el("regionSelect").replaceChildren(...Object.entries(REGION_CATALOGS).map(([key,c]) =>
-    new Option(c.city + (c.boundary ? "" : " · пилотная зона"), key)));
+    new Option("📍 " + c.city, key)));
 }
 regionOptions();
 el("regionSearch").addEventListener("submit", e => {
@@ -153700,8 +153690,13 @@ el("regionFile").addEventListener("change", async e => {
     if (e.target.files[0] === file) e.target.value = "";
   }
 });
-map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
-if (gisKey) styleMode = "2gis";
+el("gisStatus").addEventListener("click", () => { if (baseKind === "offline") showGis(); });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") { closeSummaryModal(); if (drawerOpen) toggleAnalyticsDrawer(); }
+  if (e.code === "Space" && !/INPUT|SELECT|TEXTAREA|BUTTON/.test(document.activeElement.tagName)) { e.preventDefault(); toggleSimulation(); }
+});
+el("summaryModal").addEventListener("click", e => { if (e.target === el("summaryModal")) closeSummaryModal(); });
+map.on("moveend zoomend", () => { if (activeChain.finalPvz) renderMarkers(); });
 configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);
 

@@ -4,9 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="wb-sim-2gis-key" content="" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>
-      WB ПВЗ — Доставка WB через СЦ или ПВЗ-склад
-    </title>
+    <title>WB Mesh · ПВЗ вместо второго СЦ</title>
 
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
     <link rel="stylesheet" href="styles/app.css" />
@@ -19,6 +17,7 @@
     <script defer src="data/regions/streets.js"></script>
     <script defer src="data/regions/roads.js"></script>
     <script defer src="src/core/geo.js"></script>
+    <script defer src="src/core/router.js"></script>
     <script defer src="src/core/loadindex.js"></script>
     <script defer src="src/core/regions.js"></script>
     <script defer src="src/core/citysearch.js"></script>
@@ -34,435 +33,308 @@
     <script defer src="src/model/trips.js"></script>
     <script defer src="src/model/shift.js"></script>
     <script defer src="src/ui/reports.js"></script>
+    <script defer src="src/ui/insights.js"></script>
     <script defer src="src/ui/playback.js"></script>
     <script defer src="src/ui/controls.js"></script>
     <script defer src="src/main.js"></script>
   </head>
   <body>
-    <header>
+    <header class="topbar">
       <div class="brand">
-        <div class="brand-badge">WB SIM</div>
-        <div>
-          <div class="brand-title">
-            Доставка WB через СЦ или ПВЗ-склад
-          </div>
-          <div class="brand-sub" id="headerSubStatus">
-            Схема по вашей карте • Йошкар-Ола ↔ Чебоксары
-          </div>
+        <div class="brand-logo">WB</div>
+        <div class="brand-text">
+          <div class="brand-title">Mesh-логистика ПВЗ</div>
+          <div class="brand-sub" id="headerSubStatus">ПВЗ по пути вместо второго сортировочного центра</div>
         </div>
       </div>
 
-      <div class="seg-group">
-        <button class="seg-btn active" id="geoLocal">
-          Йошкар-Ола (Медведево)
+      <div class="region-switch">
+        <div class="seg" role="tablist">
+          <button class="seg-btn active" id="geoLocal">Йошкар-Ола</button>
+          <button class="seg-btn" id="geoInter">Йошкар-Ола → Чебоксары</button>
+        </div>
+        <select class="select compact" id="regionSelect" aria-label="Регион"></select>
+      </div>
+
+      <div class="top-actions">
+        <button class="btn ghost" id="drawerFab" type="button">
+          <span class="ico">📈</span> Аналитика <span class="pill" id="fabBadge">граница выгоды</span>
         </button>
-        <button class="seg-btn" id="geoInter">Йошкар-Ола ↔ Чебоксары</button>
+        <button class="btn primary" id="openSummary" type="button">Итоги смены</button>
       </div>
     </header>
 
+    <nav class="scenario-bar" aria-label="Сценарии для показа">
+      <span class="scenario-label">Сценарии</span>
+      <button class="chip" data-preset="urban"><span>🏙️</span>Городской заказ</button>
+      <button class="chip" data-preset="hub"><span>🏬</span>Хаб · рост потока</button>
+      <button class="chip" data-preset="trunk"><span>🛣️</span>Магистраль</button>
+      <button class="chip" data-preset="returns"><span>↩️</span>Возврат</button>
+      <button class="chip" data-preset="failure"><span>⚠️</span>Ошибка логистики</button>
+      <button class="chip" data-preset="longstay"><span>📦</span>Долгое хранение</button>
+      <span id="presetCaption" class="preset-caption"></span>
+    </nav>
+
     <div class="workspace">
-      <aside class="left-panel">
-        <div class="box">
-          <div class="box-head">
-            <span class="box-title"
-              >1. Демонстрация рейса (1 машина по умолчанию)</span
-            >
-            <span id="simClock" class="muted-note">Время: 00:00</span>
-          </div>
-
-          <div class="sim-controls">
-            <button class="sim-btn start" id="btnToggleSim">
-              ▶ Запустить машину
-            </button>
-            <button class="sim-btn reset" id="resetSimulation">Сброс</button>
-            <button class="sim-btn summary-open" id="openSummary">
-              📊 Сводка
-            </button>
-          </div>
-
-          <div class="sim-row">
-            <span
-              >Число машин на маршруте:
-              <strong id="truckCountLabel">1 машина (наглядно)</strong></span
-            >
-            <span id="truckLegStatus">Ожидание старта</span>
-          </div>
-          <input
-            type="range"
-            id="truckCountSlider"
-            min="1"
-            max="3"
-            step="1"
-            value="1"
-          />
-
-          <div class="sim-row">
-            <span
-              >Нагрузка сети заказов: <strong id="flowLabel">1.0×</strong></span
-            >
-            <span id="ordersCountLabel">~140 зак/ч</span>
-          </div>
-          <input
-            type="range"
-            id="flowSlider"
-            min="50"
-            max="200"
-            step="10"
-            value="100"
-          />
-
-          <p id="planStatus" class="plan-message" role="status" hidden></p>
-          <label
-            >Минута смены
-            <input id="scrub" type="range" min="0" max="480" value="0" /></label
-          ><small id="liveLog" class="event-log"></small>
-          <div class="live-stats">
-            <div class="stat-cell">
-              <div class="stat-num" id="stDelivered">0</div>
-              <div class="stat-txt">Выдано заказов</div>
-            </div>
-            <div class="stat-cell">
-              <div class="stat-num" id="stActiveTrucks">0</div>
-              <div class="stat-txt">Машин сейчас на карте</div>
-            </div>
-            <div class="stat-cell">
-              <div class="savings-value stat-num" id="stMpSaved">0 ₽</div>
-              <div class="stat-txt">
-                Δ остатка WB к классике · закрытые рейсы
-              </div>
-            </div>
-            <div class="stat-cell">
-              <div class="payment-value stat-num" id="stPvzEarned">0 ₽</div>
-              <div class="stat-txt">Начислено ПВЗ-хабам за обработку и хранение</div>
-            </div>
-          </div>
+      <aside class="side">
+        <div class="tabs" role="tablist">
+          <button class="tab active" data-tab="route">Маршрут</button>
+          <button class="tab" data-tab="money">Экономика</button>
+          <button class="tab" data-tab="ops">Данные</button>
         </div>
 
-        <div class="box">
-          <div class="box-title">2. Конечный ПВЗ и промежуточный узел</div>
-          <label>Регион <select class="pvz-select" id="regionSelect"></select></label>
-          <details class="audit"><summary>Данные региона и дорожное покрытие</summary>
-            <p class="muted-note" id="catalogStatus"></p>
-            <p class="muted-note" id="loadDetail"></p>
-            <form id="gisConfig">
-              <label>Ключ карты 2ГИС (Raster Tiles API)
-                <input id="gisKey" type="password" autocomplete="off" required />
-              </label>
-              <button type="submit" class="seg-btn">Подключить 2ГИС</button>
-            </form>
-            <form id="regionSearch"><label>Другой город <input id="regionQuery" type="search" placeholder="Самара, Россия" required /></label>
-              <button class="seg-btn" type="submit">Найти ПВЗ</button></form>
-            <label>Подключить справочник региона <input id="regionFile" type="file" accept=".json,application/json" /></label>
-            <p id="importStatus" role="status"></p>
-            <button class="seg-btn" id="retryRoads">Обновить дороги Valhalla</button>
+        <!-- ======== TAB: маршрут ======== -->
+        <section class="tab-pane active" data-pane="route">
+          <div class="card">
+            <div class="card-head">
+              <h2><span class="step">1</span>Куда везём</h2>
+              <span class="hint" id="roadStatus" role="status"></span>
+            </div>
+            <label class="field">
+              <span>Конечный ПВЗ покупателя</span>
+              <select class="select" id="finalPvzSelect"></select>
+            </label>
+            <div class="chain" id="chainExplanation">Расчёт…</div>
+            <div class="mini-metrics">
+              <div><b id="mDirectKm">— км</b><small>через СЦ-2</small></div>
+              <div><b id="mHybridKm">— км</b><small>через ПВЗ-хаб</small></div>
+              <div><b id="mFinalLoad">—%</b><small>загрузка конечного</small></div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2><span class="step">2</span>Партия</h2>
+              <span class="tag" id="packageClass"></span>
+            </div>
+            <div class="seg full" id="sizeGroup">
+              <button class="seg-btn active" data-size="small">Малая<small>25×20×10 · 2 кг</small></button>
+              <button class="seg-btn" data-size="medium">Средняя<small>40×30×20 · 7 кг</small></button>
+              <button class="seg-btn" data-size="oversize">Габарит<small>90×45×40 · 18 кг</small></button>
+            </div>
+            <div class="grid-5">
+              <label class="field"><span>Заказов</span><input type="number" id="batch" value="20" min="1" step="1" required /></label>
+              <label class="field"><span>Д, см</span><input id="dim0" type="number" step="0.1" min="0.1" value="25" required /></label>
+              <label class="field"><span>Ш, см</span><input id="dim1" type="number" step="0.1" min="0.1" value="20" required /></label>
+              <label class="field"><span>В, см</span><input id="dim2" type="number" step="0.1" min="0.1" value="10" required /></label>
+              <label class="field"><span>кг</span><input id="kg" type="number" step="0.1" min="0.1" value="2" required /></label>
+            </div>
+            <label id="bulkConsentRow" class="check warn" hidden><input id="bulkConsent" type="checkbox" /> Покупатель согласен на доставку габарита через ПВЗ (+120 ₽)</label>
+            <p class="hint">Ячейка ПВЗ 120×60×50 см, до 25 кг. Кузов 6 000 л, до 1 000 кг.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head">
+              <h2><span class="step">3</span>Сравнение схем</h2>
+              <span class="hint">нажмите, чтобы показать на карте</span>
+            </div>
+            <button class="route-option" id="optDirect" type="button">
+              <span class="route-dot classic"></span>
+              <span class="route-body">
+                <span class="route-name">A · Базовая: СЦ-1 → СЦ-2 → ПВЗ</span>
+                <span class="route-sub" id="metaDirect">Двойная сортировка</span>
+              </span>
+              <span class="route-price" id="priceDirect">— ₽</span>
+            </button>
+            <button class="route-option active" id="optHybrid" type="button">
+              <span class="route-dot hybrid"></span>
+              <span class="route-body">
+                <span class="route-name">B · Mesh: СЦ-1 → ПВЗ-хаб → ПВЗ</span>
+                <span class="route-sub" id="metaHybrid">Пересортировка в ПВЗ по пути</span>
+              </span>
+              <span class="route-price" id="priceHybrid">— ₽</span>
+            </button>
+            <div class="decision" id="decisionCard"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2><span class="step">4</span>Смена</h2><span class="hint" id="truckLegStatus">Ожидание старта</span></div>
+            <label class="field range">
+              <span>Машин на линии <b id="truckCountLabel">1</b></span>
+              <input type="range" id="truckCountSlider" min="1" max="3" step="1" value="1" />
+            </label>
+            <label class="field range">
+              <span>Поток заказов <b id="flowLabel">1×</b> <em id="ordersCountLabel">140 зак/ч</em></span>
+              <input type="range" id="flowSlider" min="50" max="200" step="10" value="100" />
+            </label>
+          </div>
+        </section>
+
+        <!-- ======== TAB: экономика ======== -->
+        <section class="tab-pane" data-pane="money">
+          <div class="card">
+            <div class="card-head"><h2>Тарифы и ставки</h2><button class="link" id="resetTariffs" type="button">сбросить</button></div>
+            <p class="hint">Меняйте ставки — смена пересчитывается мгновенно. Это и есть финмодель MVP.</p>
+            <div class="grid-2" id="tariffGrid"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Сеть ПВЗ</h2></div>
+            <label class="field range">
+              <span>Поправка к загрузке полок <b><output id="shelfValue"></output></b></span>
+              <input id="shelfSlider" type="range" min="50" max="140" value="100" />
+            </label>
+            <label class="check"><input id="useCompetition" type="checkbox" checked /> Учитывать соседние Ozon и Яндекс Маркет</label>
+            <label class="check"><input id="stress" type="checkbox" /> Пик: все хабы заняты на 99%</label>
+          </div>
+
+          <details class="card formulas">
+            <summary><h2>Как считается выгода</h2><span class="hint">формулы модели</span></summary>
+            <div id="formulaBox"></div>
           </details>
-          <small id="roadStatus" class="muted-note" role="status"></small>
-          <select class="pvz-select" id="finalPvzSelect"></select>
 
-          <div class="chain-banner" id="chainExplanation">
-            <strong>Цепочка маршрута:</strong> расчёт...
+          <div class="card">
+            <div class="card-head"><h2>Юнит-экономика партии</h2><span class="hint">на 1 заказ</span></div>
+            <div class="cost-card" id="costSplitCard"></div>
           </div>
+        </section>
 
-          <div class="metrics-grid">
-            <div class="metric-card">
-              <div class="metric-lbl">Без гибрида (СЦ1→СЦ2→Кон)</div>
-              <div class="metric-val" id="mDirectKm">— км</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-lbl">Гибрид (СЦ1→ПВЗ-скл→Кон)</div>
-              <div class="metric-val" id="mHybridKm">— км</div>
-            </div>
-            <div class="metric-card">
-              <div class="metric-lbl">Нагрузка конечного ПВЗ</div>
-              <div class="metric-val" id="mFinalLoad">—%</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="box">
-          <div class="box-title">
-            3. Вариант логистики и распределение денег
-          </div>
-          <div class="seg-group" id="sizeGroup">
-            <button class="seg-btn active" data-size="small">Малая</button>
-            <button class="seg-btn" data-size="medium">Средняя</button>
-            <button class="seg-btn" data-size="oversize">Габаритная</button>
-          </div>
-
-          <label id="bulkConsentRow" class="muted-note" hidden><input id="bulkConsent" type="checkbox" /> Покупатель согласен на габаритный гибрид (+120 ₽)</label>
-          <div class="route-option" id="optDirect">
-            <div class="route-top">
-              <span>Вариант А (без гибрида): СЦ 1 → СЦ 2 → Конечный ПВЗ</span>
-              <span id="priceDirect">— ₽</span>
-            </div>
-            <div class="route-sub" id="metaDirect">
-              Через 2 сортировочных центра (двойная перевалка на СЦ 1 и СЦ 2)
-            </div>
-          </div>
-
-          <div class="route-option active" id="optHybrid">
-            <div class="route-top">
-              <span
-                >Вариант Б (гибрид): СЦ 1 → Гибридный ПВЗ-склад → Конечный
-                ПВЗ</span
-              >
-              <span id="priceHybrid">— ₽</span>
-            </div>
-            <div class="route-sub" id="metaHybrid">
-              Пересортировка в промежуточном ПВЗ
-            </div>
-          </div>
-
-          <section class="audit">
-            <h3>Условия эксперимента</h3>
-            <div class="preset-row">
-              <button data-preset="urban">Город</button>
-              <button data-preset="hub">Хаб</button>
-              <button data-preset="trunk">Магистраль</button>
-              <button data-preset="returns">Возврат</button>
-              <button data-preset="failure">Сбой</button>
-              <button data-preset="longstay">Хранение</button>
-            </div>
-            <span id="presetCaption" class="preset-caption"></span>
-            <label
-              >Поправка к загрузке полок <output id="shelfValue"></output
-              ><input
-                id="shelfSlider"
-                type="range"
-                min="50"
-                max="140"
-                value="100"
-            /></label>
-            <label
-              >Хранение первой партии до смены, суток
-              <input
-                id="storageDays"
-                type="number"
-                value="0"
-                min="0"
-                step="1"
-                required
-            /></label>
-            <label
-              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние Ozon и Яндекс Маркет вместе с WB</label
-            >
-            <label
-              >Заказов в партии
-              <input
-                type="number"
-                id="batch"
-                value="20"
-                min="1"
-                step="1"
-                required
-            /></label>
-            <p>Упаковка, см (Д × Ш × В), и масса, кг. Тарифная категория: <strong id="packageClass"></strong>.</p>
-            <label
-              >Д
-              <input
-                id="dim0"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="25"
-                required /></label
-            ><label
-              >Ш
-              <input
-                id="dim1"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="20"
-                required /></label
-            ><label
-              >В
-              <input
-                id="dim2"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="10"
-                required /></label
-            ><label
-              >кг
-              <input
-                id="kg"
-                type="number"
-                step="0.1"
-                min="0.1"
-                value="2"
-                required
-            /></label>
-            <p>
-              Ячейка 120 × 60 × 50 см, до 25 кг. Кузов 6000 л, до 1000 кг. Для
-              кросс-докинга резервируется весь объём партии на время обработки
-              одним сотрудником.
-            </p>
-            <label
-              ><input id="stress" type="checkbox" /> Пик: все хабы заняты на
-              99%</label
-            >
-            <label
-              >Первый рейс смены
-              <select id="incident">
+        <!-- ======== TAB: склад и данные ======== -->
+        <section class="tab-pane" data-pane="ops">
+          <div class="card">
+            <div class="card-head"><h2>Инцидент и хранение</h2></div>
+            <label class="field"><span>Первый рейс смены</span>
+              <select class="select" id="incident">
                 <option value="none">Штатный</option>
                 <option value="return">Возврат одной коробки</option>
                 <option value="error">Пересорт одной коробки</option>
-              </select></label
-            >
+              </select>
+            </label>
+            <label class="field"><span>Хранение первой партии до смены, суток</span>
+              <input id="storageDays" type="number" value="0" min="0" step="1" required />
+            </label>
             <section id="storedLot" class="lot-panel" hidden>
               <h3>Первая партия со хранения</h3><p id="lotLedger"></p>
-              <button id="showStoragePickup" type="button">К моменту отгрузки</button>
+              <button id="showStoragePickup" class="btn small" type="button">К моменту отгрузки</button>
             </section>
-            <h3>Ручной остаток продавца</h3>
-            <select id="stockPoint"></select>
-            <button data-stock="receive">Принять 10</button
-            ><button data-stock="sell">Продать 2</button
-            ><button data-stock="day">+ сутки</button>
-            <p id="stockStatus"></p>
-            <small
-              ><span id="storageRate"></span> за единицу в сутки. Запас
-              уменьшает доступную полку. Этот договор хранения учитывается
-              отдельно от перевозки.</small
-            >
-          </section>
-          <div class="cost-card" id="costSplitCard"></div>
-        </div>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Остаток продавца в ПВЗ</h2></div>
+            <select class="select" id="stockPoint"></select>
+            <div class="btn-row">
+              <button class="btn small" data-stock="receive">Принять 10</button>
+              <button class="btn small" data-stock="sell">Продать 2</button>
+              <button class="btn small" data-stock="day">+ сутки</button>
+            </div>
+            <p class="hint" id="stockStatus"></p>
+            <p class="hint"><span id="storageRate"></span> за единицу в сутки. Запас уменьшает доступную полку.</p>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Данные региона</h2></div>
+            <p class="hint" id="catalogStatus"></p>
+            <p class="hint" id="loadDetail"></p>
+            <form id="regionSearch" class="inline-form"><input id="regionQuery" type="search" placeholder="Другой город: Самара, Россия" required />
+              <button class="btn small" type="submit">Найти ПВЗ</button></form>
+            <label class="field"><span>Справочник региона (JSON)</span><input id="regionFile" type="file" accept=".json,application/json" /></label>
+            <p id="importStatus" class="hint" role="status"></p>
+            <button class="btn small" id="retryRoads" type="button">Перестроить маршруты</button>
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h2>Карта 2ГИС</h2></div>
+            <p class="hint">Карта 2ГИС работает без ключа. Ключ Raster Tiles API (необязательно) включает фирменные тайлы v2.</p>
+            <form id="gisConfig" class="inline-form">
+              <input id="gisKey" type="password" autocomplete="off" placeholder="Ключ 2ГИС" required />
+              <button type="submit" class="btn small">Сохранить</button>
+            </form>
+          </div>
+        </section>
       </aside>
 
       <main class="map-wrap">
         <div id="map"></div>
 
-        <div class="map-top-bar">
-          <div class="map-legend-box">
-            <div class="road-legend">
-              <span
-                ><i class="classic-line line-sample"></i>Без гибрида: СЦ 1 → СЦ 2 → Конечный ПВЗ</span
-              >
-              <span
-                ><i class="hybrid-line line-sample"></i>Гибрид: СЦ 1
-                → Гибридный ПВЗ-склад → Конечный ПВЗ</span
-              >
-            </div>
-            <div class="muted-note">
-              <strong>СЦ 1</strong> — начальный склад;
-              <strong>СЦ 2</strong> — промежуточный центр; <strong>СКЛ</strong> — гибридный ПВЗ-склад;
-              <strong>КОН</strong> — конечный ПВЗ.
-            </div>
-          </div>
-
-          <div class="layer-box">
-            <button class="layer-btn" id="btn2gis">2ГИС</button>
-            <button class="layer-btn active" id="btnVec">Карта</button>
-            <button class="layer-btn" id="btnSat">Спутник</button>
-            <small id="gisStatus" role="status" hidden></small>
-          </div>
+        <div class="kpi-strip">
+          <div class="kpi"><small>Выдано</small><b id="stDelivered">0</b></div>
+          <div class="kpi accent" title="Разница остатка WB к базовой схеме по закрытым рейсам"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
+          <div class="kpi"><small>Доход ПВЗ-хабов</small><b class="payment-value" id="stPvzEarned">0 ₽</b></div>
+          <div class="kpi"><small>Через ПВЗ / СЦ-2</small><b id="stSplit">0 / 0</b></div>
+          <div class="kpi"><small>Машин в пути</small><b id="stActiveTrucks">0</b></div>
         </div>
+
+        <div class="map-legend">
+          <div><i class="line-sample classic-line"></i>A · через СЦ-2</div>
+          <div><i class="line-sample hybrid-line"></i>B · через ПВЗ-хаб</div>
+          <div><i class="dot-sample final"></i>КОН — ПВЗ покупателя</div>
+          <div><i class="dot-sample hub"></i>ХАБ — пересортировка</div>
+          <div class="legend-load"><i class="dot-sample low"></i>&lt;55% <i class="dot-sample mid"></i>&lt;78% <i class="dot-sample high"></i>полки</div>
+          <small id="gisStatus" class="map-source" role="status"></small>
+        </div>
+
+        <div class="player">
+          <button class="play" id="btnToggleSim" type="button">▶ Запустить смену</button>
+          <button class="btn ghost small" id="resetSimulation" type="button" title="В начало смены">↺</button>
+          <div class="timeline">
+            <div class="timeline-top">
+              <span id="simClock" class="clock">Смена 0:00</span>
+              <span class="speed">скорость
+                <select id="speedSelect"><option value="2">×2</option><option value="4" selected>×4</option><option value="10">×10</option><option value="30">×30</option></select>
+              </span>
+            </div>
+            <input id="scrub" type="range" min="0" max="480" value="0" aria-label="Минута смены" />
+            <div class="ticks"><span>0ч</span><span>2ч</span><span>4ч</span><span>6ч</span><span>8ч</span></div>
+          </div>
+          <details class="log">
+            <summary>Журнал</summary>
+            <small id="liveLog" class="event-log"></small>
+          </details>
+        </div>
+        <p id="planStatus" class="plan-message" role="status" hidden></p>
       </main>
     </div>
 
     <div class="modal-backdrop" id="summaryModal">
       <div class="modal-card">
-        <div class="summary-heading">
-          <h3 class="summary-title">
-            Сводка и сравнение: СЦ 1 → СЦ 2 vs Гибридный ПВЗ-склад
-          </h3>
-          <button class="close-modal-btn">Закрыть</button>
+        <div class="modal-head">
+          <div>
+            <small class="eyebrow">Итоги смены · 8 часов · одинаковый спрос и парк</small>
+            <h3>Базовая схема через СЦ-2 vs Mesh через ПВЗ</h3>
+          </div>
+          <button class="close-modal-btn" aria-label="Закрыть">✕</button>
         </div>
-
-        <div class="summary-metrics metrics-grid" id="summaryTopKpis"></div>
+        <div id="summaryHero" class="summary-hero"></div>
+        <div class="summary-metrics" id="summaryTopKpis"></div>
+        <h4 class="section-title">Нагрузка ПВЗ-хабов</h4>
+        <div id="hubLoadTable"></div>
+        <h4 class="section-title">Тариф для покупателя</h4>
         <table class="summary-table" id="summaryTable">
-          <thead>
-            <tr>
-              <th>Схема</th>
-              <th>Узлы</th>
-              <th>Базовый тариф СЦ / заказ</th>
-              <th>К оплате / заказ</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Схема</th><th>Узлы</th><th>Базовый тариф / заказ</th><th>К оплате / заказ</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
     </div>
 
-    <!-- Плавающая кнопка в правом нижнем углу и выезжающее боковое меню с инфографикой -->
-    <button class="drawer-fab" id="drawerFab">
-      <span>📈 Инфографика и расходы</span>
-      <span class="fab-pill" id="fabBadge">Сводка</span>
-    </button>
-
-    <aside
-      class="analytics-drawer"
-      id="analyticsDrawer"
-      aria-label="Аналитическая сводка"
-    >
+    <aside class="analytics-drawer" id="analyticsDrawer" aria-label="Аналитика">
       <div class="drawer-header">
         <div>
-          <h3>Аналитика: деньги, время и издержки</h3>
-          <p id="drawerSubtitle">
-            Сравнение «СЦ 1 → СЦ 2» и «Гибридный ПВЗ-склад»
-          </p>
+          <h3>Аналитика и граница выгодности</h3>
+          <p id="drawerSubtitle">Сравнение при одинаковом спросе и парке</p>
         </div>
         <button class="drawer-close" title="Свернуть">✕</button>
       </div>
       <div class="drawer-body" id="drawerBodyContent"></div>
     </aside>
 
-    <template id="map-credit"
-      >©
-      <a href="https://www.openstreetmap.org/copyright"
-        >OpenStreetMap contributors</a
-      >
-      · ODbL</template
-    >
-    <template id="economics-view"
-      ><div class="cost-scroll">
-        <table class="summary-table">
-          <thead>
-            <tr>
-              <th>На заказ</th>
-              <th>Через СЦ 2</th>
-              <th>Гибрид¹</th>
-            </tr>
-          </thead>
+    <template id="map-credit">© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a> · ODbL</template>
+    <template id="economics-view"><div class="cost-scroll">
+        <table class="summary-table compact">
+          <thead><tr><th>На заказ</th><th>A · СЦ-2</th><th>B · Mesh¹</th></tr></thead>
           <tbody></tbody>
         </table>
       </div>
-      <small
-        >¹ При отказе хаба применён тариф классики. В межгороде сохранён СЦ
-        Чебоксар. <span class="rate-note"></span> Таблица на заказ показывает
-        вклад до этого расхода.</small
-      ></template
-    >
-    <template id="shift-view"
-      ><section class="recommendation">
+      <small class="hint">¹ При отказе хаба применён тариф базовой схемы. <span class="rate-note"></span></small></template>
+    <template id="shift-view"><section class="recommendation">
         <small>Рекомендация по итогу смены</small>
         <h3></h3>
         <p></p>
-        <div>
-          <span data-result="direct"></span><br /><span
-            data-result="hybrid"
-          ></span>
-        </div>
+        <div class="rec-results"><span data-result="direct"></span><span data-result="hybrid"></span></div>
       </section>
-      <table class="summary-table">
-        <thead>
-          <tr>
-            <th>Смена 8 ч</th>
-            <th>Спрос</th>
-            <th>Выдано / возвраты</th>
-            <th>Не вывезено</th>
-            <th>ПВЗ · хранение</th><th>Остаток WB</th>
-          </tr>
-        </thead>
+      <table class="summary-table compact">
+        <thead><tr><th>Смена 8 ч</th><th>Спрос</th><th>Выдано / возвр.</th><th>Не вывезено</th><th>ПВЗ · хранение</th><th>Остаток WB</th></tr></thead>
         <tbody></tbody>
       </table>
-      <p>
-        Допуск рейса — машина успевает вернуться до конца смены. Невывезенный
-        спрос остаётся в очереди на конец смены. Возвраты сторнируют выручку, расходы исправления
-        оплачивает WB.
-      </p></template
-    >
+      <p class="hint">Рейс допускается, если машина успевает вернуться до конца смены. Невывезенный спрос остаётся в очереди. Возвраты сторнируют выручку, исправление оплачивает WB.</p></template>
   </body>
 </html>

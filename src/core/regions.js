@@ -49,7 +49,26 @@ function prepareNetwork(key, catalog) {
   return {points,wb};
 }
 
+// «Wildberries · 56.1, 47.2» → «WB · Ленинский проспект»: подпись по ближайшей улице графа.
+function humanizeNames(key, points){
+  const graph = routerFor(key);
+  const used = new Map();
+  for (const p of points) {
+    if (p.brand !== "wb" || p.label) continue;
+    const raw = /^(Вайлдберриз|Wildberries)\s*·/i.test(p.name) || /\d+\.\d+,\s*\d+\.\d+$/.test(p.name);
+    let label = p.name.replace(/^(Йошкар-Ола|Чебоксары|Казань|Москва),\s*/,"");
+    if (raw) {
+      const street = graph?.streetNear(p.latlng);
+      label = street ? "у " + street.replace(/^улица /i,"ул. ") : "ПВЗ " + p.latlng.map(v=>v.toFixed(4)).join(", ");
+    }
+    const n = (used.get(label) || 0) + 1;
+    used.set(label, n);
+    p.label = n > 1 ? label + " (" + n + ")" : label;
+  }
+}
+
 function setNetwork(key, prepared=prepareNetwork(key,REGION_CATALOGS[key])){
+  humanizeNames(key, prepared.wb);
   networkPoints=prepared.points;
   PVZ_LIST.splice(0,PVZ_LIST.length,...prepared.wb);
   cityById = new Map(PVZ_LIST.map(p => [p.id, p]));
@@ -67,6 +86,13 @@ function candidatePoints() {
   const available = ranked.filter(([p]) => calcLoadPct(p) <= CONFIG.network.maxLoadForHub);
   for (const [p] of [...ranked.slice(0,5), ...available.slice(0,5)]) if (!base.includes(p)) base.push(p);
   return base;
+}
+
+// Показываем весь рейс: СЦ-1, СЦ-2 и конечный ПВЗ, с отступами под панели карты.
+function fitRoute(){
+  const pts=[SC_NODES.sc1.latlng,SC_NODES.sc2.latlng,cityById.get(finalPvzId)?.latlng].filter(Boolean);
+  if(geoMode==="intercity")pts.push(SC_NODES.ch.latlng);
+  map.fitBounds(pts,{paddingTopLeft:[40,110],paddingBottomRight:[260,120],maxZoom:14});
 }
 
 function configureRegion(key, catalog=REGION_CATALOGS[key]) {
@@ -94,21 +120,19 @@ function configureRegion(key, catalog=REGION_CATALOGS[key]) {
     }
   }
   finalPvzId = catalog.defaultId && cityById.has(catalog.defaultId) ? catalog.defaultId : PVZ_LIST[0].id;
-  savedDestinations=new Set(PVZ_LIST.filter(p=>hasSavedItinerary(roadItinerary(chain("direct",null,p.id),"none"))).map(p=>p.id));
   populateSelect();
-  el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(p.name, p.id)));
+  el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(pvzName(p), p.id)));
   el("regionSelect").value = key;
   el("geoLocal").classList.toggle("active", key === "yoshkar-ola");
   el("geoInter").classList.toggle("active", key === "cheboksary");
   const counts = {wb:0, ozon:0, ym:0};
   for (const p of networkPoints) counts[p.brand]++;
   el("catalogStatus").textContent = catalog.city + " · WB " + counts.wb + " · Ozon " + counts.ozon +
-    " · Яндекс Маркет " + counts.ym + " · " + [...new Set(networkPoints.map(p=>p.origin))].join(" / ") + " · срез "+catalog.date + ". Полный путь через СЦ офлайн: " + savedDestinations.size + " из " + PVZ_LIST.length + " адресов WB.";
+    " · Яндекс Маркет " + counts.ym + " · " + [...new Set(networkPoints.map(p=>p.origin))].join(" / ") + " · срез "+catalog.date + ". Маршруты строятся по улицам " + (routerFor(key) ? "офлайн-графом OSM." : "онлайн-сервисом с оценкой при сбое.");
   el("presetCaption").textContent = "";
   document.querySelectorAll("[data-preset]").forEach(b => b.classList.remove("active"));
   setStyleMode(styleMode);
-  if (key === "cheboksary") map.fitBounds([SC_NODES.sc1.latlng, cityById.get(finalPvzId).latlng], {padding:[40,40]});
-  else map.setView(cityById.get(finalPvzId).latlng, key === "yoshkar-ola" ? 13 : 14);
+  fitRoute();
   refreshDestination();
 }
 

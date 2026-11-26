@@ -1,7 +1,7 @@
 let geoMode = "local";
 let routeMode = "hybrid"; // 'direct' = СЦ 1 -> СЦ 2 -> Конечный ПВЗ; 'hybrid' = СЦ 1 -> Гибридный ПВЗ-склад -> Конечный ПВЗ
 let finalPvzId = "yo-1";
-let styleMode = "vector";
+let styleMode = "2gis";
 let activeChain = {
   scStart: SC_NODES.sc1,
   scMid: SC_NODES.sc2,
@@ -13,9 +13,10 @@ let activeChain = {
 const el = (id) => document.getElementById(id),
   val = (id) => Number(el(id).value),
   rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " ₽";
+const pvzName = p => p ? (p.label || p.name) : "";
 const nodeName = id => {
   const depot = Object.values(SC_NODES).find(p => p.id === id);
-  return depot ? depot.label.replace(/\n/g, " · ") : cityById.get(id)?.name;
+  return depot ? depot.label.replace(/\n/g, " · ") : pvzName(cityById.get(id));
 };
 const pathName = (r) => r.ids.map(nodeName).join(" → ");
 const volumes = {

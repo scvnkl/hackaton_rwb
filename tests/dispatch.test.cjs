@@ -11,7 +11,7 @@ function pilot(region = "yoshkar-ola") {
   }).map(([id,value]) => [id, {value, checked:value === true}]));
   const ctx = vm.createContext({structuredClone, window:{}, document:{getElementById:id => controls[id]}});
   for (const file of ["src/config.js","data/locations.js","data/routes.js","data/regions/catalogs.js",
-    "data/regions/roads.js","src/core/geo.js","src/core/regions.js","src/core/roads.js",
+    "data/regions/roads.js","data/atlas.js","data/regions/streets.js","src/core/geo.js","src/core/router.js","src/core/regions.js","src/core/roads.js",
     "src/core/loadindex.js","src/core/sla.js","src/state.js","src/model/capacity.js",
     "src/model/trips.js","src/model/shift.js"]) {
     vm.runInContext(fs.readFileSync(path.resolve(__dirname,"..",file),"utf8"),ctx,{filename:file});
@@ -61,8 +61,10 @@ test("без дороги сравнение недоступно, без сог
   assert.equal(run('const r=choose("hybrid",2,0,"none",[]); r.premium'),120);
   assert.equal(run('r.rows["Габарит · грузчики"]'),80);
   assert.equal(run('r.rows["Габарит · выплата ПВЗ"]'),100);
-  run('cityById.set("missing",{id:"missing",latlng:[55.8,49.11]}); finalPvzId="missing"');
-  assert.equal(run('choose("hybrid",2,0,"none",[])'),null);
+  // Точка вне дорожного графа: расчёт не блокируется, плечо помечается как оценочное.
+  run('cityById.set("missing",{id:"missing",latlng:[55.95,49.4]}); finalPvzId="missing"');
+  assert.ok(run('choose("direct",2,0,"none",[])'));
+  assert.equal(run('isEstimated("sc-2","missing")'),true);
 });
 
 test("соседний конкурент влияет на загрузку и остаётся за пределами списка хабов", () => {
@@ -172,17 +174,25 @@ test("свободная полка определяется пиком одно
   assert.equal(run("canReserve(point,[claim(0,10,0.1,10)],[claim(5,8,0.1,3)])"),false);
 });
 
-test("покрытие штатного полного пути и отсутствие денег при неизвестной дороге", () => {
-  for(const [key,count] of Object.entries({"yoshkar-ola":8,cheboksary:5,kazan:1,moscow:1})){
+test("каждый ПВЗ пилотных регионов получает полный маршрут по улицам офлайн", () => {
+  for (const key of ["yoshkar-ola","cheboksary"]) {
     const {run} = pilot(key);
-    assert.equal(run('const saved=p=>hasSavedItinerary(roadItinerary(chain("direct",null,p.id),"none")); PVZ_LIST.filter(saved).length'),count);
-    run('finalPvzId=PVZ_LIST.find(p=>!saved(p)).id; hubPool=candidatePoints();');
-    for(const mode of ["direct","hybrid"]){
-      const expr='schedule("'+mode+'")';
-      assert.equal(run(expr+'.missingRoads'),true);
-      assert.equal(run('metrics("'+mode+'",480,'+expr+').margin'),null);
+    const total = run('PVZ_LIST.length');
+    const routed = run('PVZ_LIST.filter(p => { const ids=roadItinerary(chain("direct",null,p.id),"none"); return ids.slice(1).every((b,i)=>!isEstimated(ids[i],b)); }).length');
+    assert.equal(routed, total, key);
+    run('finalPvzId=PVZ_LIST.at(-1).id; hubPool=candidatePoints();');
+    for (const mode of ["direct","hybrid"]) {
+      assert.equal(run('schedule("'+mode+'").missingRoads'),false);
+      assert.notEqual(run('metrics("'+mode+'",480,schedule("'+mode+'")).margin'),null);
     }
   }
+});
+
+test("граф строит маршрут по улицам близко к сохранённому треку Valhalla", () => {
+  const {run} = pilot();
+  const km = run('routerFor("yoshkar-ola").route(SC_NODES.sc1.latlng, cityById.get("yo-1").latlng).km');
+  const saved = run('roads["yo-1>sc-1"].km');
+  assert.ok(Math.abs(km - saved) / saved < 0.1, km + " vs " + saved);
 });
 
 test("проверка точек отклоняет конфликт с другим брендом и ID сортцентра", () => {
