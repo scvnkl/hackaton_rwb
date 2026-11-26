@@ -30,6 +30,7 @@
     <script defer src="src/map/atlas.js"></script>
     <script defer src="src/map/map.js"></script>
     <script defer src="src/map/twogis.js"></script>
+    <script defer src="src/map/taxis.js"></script>
     <script defer src="src/model/capacity.js"></script>
     <script defer src="src/model/trips.js"></script>
     <script defer src="src/model/shift.js"></script>
@@ -37,6 +38,7 @@
     <script defer src="src/ui/insights.js"></script>
     <script defer src="src/ui/business.js"></script>
     <script defer src="src/ui/logist.js"></script>
+    <script defer src="src/ui/taxi.js"></script>
     <script defer src="src/ui/playback.js"></script>
     <script defer src="src/ui/controls.js"></script>
     <script defer src="src/main.js"></script>
@@ -91,6 +93,7 @@
         <!-- ======== TAB: пульт логиста ======== -->
         <section class="tab-pane active" data-pane="logist">
           <div class="card" id="logistView"></div>
+          <div class="card" id="taxiView"></div>
         </section>
 
         <!-- ======== TAB: эффект для бизнеса ======== -->
@@ -287,6 +290,7 @@
           <div><i class="line-sample hybrid-line"></i>B · через ПВЗ-хаб</div>
           <div><i class="dot-sample final"></i>КОН — ПВЗ покупателя</div>
           <div><i class="dot-sample hub"></i>ХАБ — пересортировка</div>
+          <div><span class="taxi-legend">🚕</span>Такси WB · попутно</div>
           <div class="legend-load"><i class="dot-sample low"></i>&lt;55% <i class="dot-sample mid"></i>&lt;78% <i class="dot-sample high"></i>полки</div>
           <small id="gisStatus" class="map-source" role="status"></small>
         </div>

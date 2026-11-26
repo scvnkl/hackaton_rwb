@@ -1177,7 +1177,33 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
 .lg-auto ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
 .lg-auto li.manual { color: var(--wb-deep); font-weight: 600; margin-top: 4px; }
 .lg-ex small.tip { display: block; color: var(--wb-deep); margin-top: 3px; font-weight: 600; }
+
+/* срочные заказы → такси */
+.tx-item { border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; margin-bottom: 8px; }
+.tx-item.due { border-color: var(--warn); background: #fffaf0; }
+.tx-item.done { background: var(--bg); }
+.tx-top { display: flex; justify-content: space-between; gap: 6px; font-size: 12.5px; }
+.tx-item > small { display: block; color: var(--muted); font-size: 11.5px; margin: 2px 0 6px; }
+.tx-cmp { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.tx-opt { border-radius: 10px; padding: 6px 8px; background: var(--bg); display: flex; flex-direction: column; }
+.tx-opt.best { background: var(--good-soft); }
+.tx-opt small { font-size: 10.5px; color: var(--muted); font-weight: 700; }
+.tx-opt b { font-size: 14px; }
+.tx-opt.best b { color: var(--good); }
+.tx-opt em { font-style: normal; font-size: 10.5px; color: var(--muted); }
+.tx-btns { display: flex; gap: 6px; margin-top: 6px; }
+.tx-done { margin-top: 6px; font-size: 12px; font-weight: 700; color: var(--good); }
+.tx-sum { font-size: 12.5px; font-weight: 700; background: var(--wb-soft); color: var(--wb-deep); border-radius: 10px; padding: 6px 10px; margin: 4px 0; }
+
+/* такси на карте */
+.taxi-pin { width: 22px; height: 22px; border-radius: 50%; background: #ffd23f; border: 2px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.35); display: grid; place-items: center; font-size: 11px; position: relative; opacity: .9; }
+.taxi-pin.active { width: 30px; height: 30px; font-size: 15px; border-color: var(--wb); box-shadow: 0 0 0 4px rgba(245,180,0,.35), 0 2px 8px rgba(0,0,0,.35); opacity: 1; }
+.taxi-pin span { position: absolute; right: -8px; top: -7px; background: var(--wb); color: #fff; font-size: 8.5px; font-weight: 900; border-radius: 99px; padding: 0 3px; line-height: 13px; }
+.taxi-legend { display: inline-grid; place-items: center; width: 16px; height: 16px; border-radius: 50%; background: #ffd23f; font-size: 9px; margin-right: 6px; }
+.lg-jump { margin-top: 8px; border: 0; background: #ffd23f; color: #3b2a00; font-weight: 800; font-size: 12px; border-radius: 99px; padding: 5px 12px; }
 </style>
+
+
 
 
 
@@ -1261,6 +1287,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
         <!-- ======== TAB: пульт логиста ======== -->
         <section class="tab-pane active" data-pane="logist">
           <div class="card" id="logistView"></div>
+          <div class="card" id="taxiView"></div>
         </section>
 
         <!-- ======== TAB: эффект для бизнеса ======== -->
@@ -1457,6 +1484,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
           <div><i class="line-sample hybrid-line"></i>B · через ПВЗ-хаб</div>
           <div><i class="dot-sample final"></i>КОН — ПВЗ покупателя</div>
           <div><i class="dot-sample hub"></i>ХАБ — пересортировка</div>
+          <div><span class="taxi-legend">🚕</span>Такси WB · попутно</div>
           <div class="legend-load"><i class="dot-sample low"></i>&lt;55% <i class="dot-sample mid"></i>&lt;78% <i class="dot-sample high"></i>полки</div>
           <small id="gisStatus" class="map-source" role="status"></small>
         </div>
@@ -152795,6 +152823,86 @@ function setStyleMode() {
 
 </script>
 <script>
+/* Такси сети WB на карте.
+ * Фон: несколько попутных такси ездят по своим маршрутам по улицам — только маленькие иконки, без линий.
+ * Назначенное на срочный заказ такси получает пунктир «СЦ-1 → ПВЗ» и едет по нему по часам смены. */
+const taxiLayer = L.layerGroup().addTo(map);
+let taxiFleet = [], taxiFleetKey = "", taxiAssigned = new Map();
+
+function trackOf(a, b) {
+  const r = routerFor(regionId)?.route(a, b);
+  if (r && r.track.length > 1) return r.track;
+  const sec = haversineM(a, b) * 1.35 / (30 / 3.6);
+  return [[a[0], a[1], 0], [b[0], b[1], sec]];
+}
+function posOnTrack(track, sec) {
+  const end = track.at(-1)[2];
+  if (sec <= 0) return track[0].slice(0, 2);
+  if (sec >= end) return track.at(-1).slice(0, 2);
+  let i = 1;
+  while (i < track.length - 1 && track[i][2] < sec) i++;
+  const [la, lo, ta] = track[i - 1], [lb, lob, tb] = track[i];
+  const k = tb > ta ? (sec - ta) / (tb - ta) : 0;
+  return [la + (lb - la) * k, lo + (lob - lo) * k];
+}
+const taxiIcon = (label, active) => L.divIcon({
+  className: "",
+  html: '<div class="taxi-pin' + (active ? " active" : "") + '">🚕' + (label ? "<span>" + label + "</span>" : "") + "</div>",
+  iconSize: [active ? 30 : 22, active ? 30 : 22], iconAnchor: [active ? 15 : 11, active ? 15 : 11],
+});
+
+// Фоновые маршруты: пары далёких друг от друга ПВЗ, детерминированно для повторяемого показа.
+function buildTaxiFleet() {
+  const key = regionId + ":" + PVZ_LIST.length;
+  if (key === taxiFleetKey) return;
+  taxiFleetKey = key;
+  taxiLayer.clearLayers();
+  taxiAssigned.clear();
+  taxiFleet = [];
+  if (PVZ_LIST.length < 8) return;
+  const pairs = [[0.05, 0.62], [0.27, 0.88], [0.41, 0.12], [0.73, 0.33]];
+  for (const [i, j] of pairs) {
+    const a = PVZ_LIST[Math.floor(i * PVZ_LIST.length)], b = PVZ_LIST[Math.floor(j * PVZ_LIST.length)];
+    const track = trackOf(a.latlng, b.latlng);
+    const marker = L.marker(track[0].slice(0, 2), {icon: taxiIcon("", false), interactive: true, zIndexOffset: 500})
+      .bindTooltip("Такси WB · едет с пассажиром, есть место для посылки", {direction: "top"}).addTo(taxiLayer);
+    taxiFleet.push({track, marker, phase: (i * 997) % 1});
+  }
+}
+
+function updateTaxiMap() {
+  if (planIssue) return;
+  buildTaxiFleet();
+  const sec = elapsed * 60;
+  for (const t of taxiFleet) {
+    const dur = t.track.at(-1)[2];
+    if (!dur) continue;
+    // Туда-обратно по своему маршруту.
+    const s = (sec + t.phase * 2 * dur) % (2 * dur);
+    t.marker.setLatLng(posOnTrack(t.track, s <= dur ? s : 2 * dur - s));
+  }
+  // Назначенные на срочные заказы.
+  for (const [id, o] of taxiDone) {
+    if (o.van) continue;
+    let a = taxiAssigned.get(id);
+    if (!a) {
+      const track = trackOf(SC_NODES.sc1.latlng, o.p.latlng);
+      const line = L.polyline(track.map(p => p.slice(0, 2)), {color: "#f5b400", weight: 4, opacity: 0.9, dashArray: "6 7", interactive: false}).addTo(taxiLayer);
+      const marker = L.marker(track[0].slice(0, 2), {icon: taxiIcon(o.car.replace(/\D/g, ""), true), zIndexOffset: 950})
+        .bindTooltip(o.car + " · срочный заказ → " + pvzName(o.p) + " · прибытие ≈ " + o.eta, {direction: "top"}).addTo(taxiLayer);
+      a = {track, line, marker, start: o.startMin + TAXI.pickupMin};
+      taxiAssigned.set(id, a);
+    }
+    const run = (elapsed - a.start) * 60;
+    a.marker.setLatLng(posOnTrack(a.track, run));
+    const arrived = run >= a.track.at(-1)[2];
+    a.line.setStyle({opacity: arrived ? 0.25 : 0.9});
+  }
+  for (const [id, a] of taxiAssigned) if (!taxiDone.has(id)) { taxiLayer.removeLayer(a.line); taxiLayer.removeLayer(a.marker); taxiAssigned.delete(id); }
+}
+
+</script>
+<script>
 function backgroundLoad(pvz) {
   if (LOAD_OVERRIDE !== null) return LOAD_OVERRIDE;
   if (el("stress").checked) return 99;
@@ -154011,7 +154119,7 @@ function renderLogist(force = false) {
         h("small", {}, "Система предлагает: " + (r.mode === "hybrid" ? "через " + pvzName(r.hub) : "через СЦ-2") + " — " + why),
         tip ? h("small", {class: "tip"}, tip) : null),
       dec ? h("span", {class: "lg-st done"}, "✓ " + dec) : h("div", {class: "lg-ex-btns"},
-        btn(list.length > 1 ? "Подтвердить все" : "Подтвердить", "подтверждено", "primary"),
+        btn(list.length > 1 ? "Подтвердить операцию для всех" : "Подтвердить операцию", "подтверждено", "primary"),
         btn(r.mode === "hybrid" ? "Через СЦ-2" : "Ждать хаб", r.mode === "hybrid" ? "через СЦ-2" : "ждём хаб")));
   }) : [h("p", {class: "lg-ok"}, "✓ Исключений нет — все партии смены решены автоматически")];
 
@@ -154019,7 +154127,8 @@ function renderLogist(force = false) {
     h("div", {class: "lg-head"},
       h("small", {}, "Пульт логиста · городская доставка WB · " + (REGION_CATALOGS[regionId]?.city || "Йошкар-Ола")),
       h("b", {}, "Смена 08:00–16:00 · сейчас " + clockAt(elapsed)),
-      h("p", {}, "Система сама решает по каждой партии: через ПВЗ-хаб по пути или через СЦ-2. Вы подтверждаете только исключения.")),
+      h("p", {}, "Система сама решает по каждой партии: через ПВЗ-хаб по пути или через СЦ-2. Вы подтверждаете только исключения."),
+      (() => { const b = h("button", {class: "lg-jump", type: "button"}, "🚕 Срочные заказы → такси WB ↓"); b.addEventListener("click", () => el("taxiView").scrollIntoView({behavior: "smooth", block: "start"})); return b; })()),
     h("div", {class: "lg-kpis"},
       kpi("Решено автоматически", auto + " из " + trips.length, "партий смены", "good"),
       kpi("Через ПВЗ-хабы", viaHub.length + " партий", viaHub.reduce((s, r) => s + r.n, 0) + " коробок мимо СЦ-2"),
@@ -154040,6 +154149,74 @@ function renderLogist(force = false) {
          "При перегрузке хабов сама возвращает партии на СЦ-2 или сдвигает отправку на 15–30 мин",
          "Считает эффект: деньги, время, пробег — по каждой партии и за смену"].map(t => h("li", {}, "✓ " + t)),
         h("li", {class: "manual"}, "Логист: подтверждает исключения (малая выгода, задержка срока, хаб недоступен), меняет тарифы и пороги, подключает новые ПВЗ-хабы"))),
+  );
+}
+
+</script>
+<script>
+/* Срочные заказы → попутное такси WB.
+ * Если заказ нужно доставить срочно, а ближайший рейс «Газели» не идёт на этот адрес,
+ * система предлагает полупустое такси сети WB, которое едет мимо. Логист подтверждает операцию. */
+const TAXI = {pickupRub: 99, perKm: 9, pickupMin: 8, kmh: 30}; // попутный тариф: допущение команды
+const taxiDone = new Map();
+const taxiLog = [];
+
+function urgentOrders() {
+  if (!PVZ_LIST.length) return [];
+  const picks = [0.17, 0.53, 0.81].map(f => PVZ_LIST[Math.floor(f * PVZ_LIST.length)]).filter(Boolean);
+  const times = [70, 220, 370];
+  const graph = routerFor(regionId);
+  return picks.map((p, i) => {
+    const r = graph?.route(SC_NODES.sc1.latlng, p.latlng);
+    const km = r ? r.km : haversineM(SC_NODES.sc1.latlng, p.latlng) * 1.35 / 1000;
+    const vanMin = r ? r.sec / 60 : km / 25 * 60;
+    const taxiMin = TAXI.pickupMin + km / TAXI.kmh * 60;
+    const taxiRub = Math.round(TAXI.pickupRub + TAXI.perKm * km);
+    // Отдельный выезд «Газели» туда и обратно, если везти машиной.
+    const vanRub = Math.round(CONFIG.exitFee + 2 * km * CONFIG.perKm + (2 * vanMin + 10) * CONFIG.perMin);
+    const nextVan = runs.hybrid?.trips.find(t => t.start >= times[i]);
+    return {id: "u" + i, t: times[i], p, km, taxiMin, taxiRub, vanRub, vanMin: vanMin + 10,
+      reason: ["Покупатель оформил срочную доставку", "Повторная доставка после пересорта", "Заказ с истекающим сроком хранения"][i],
+      nextVan: nextVan ? clockAt(nextVan.start) : null};
+  });
+}
+
+function renderTaxi() {
+  const box = el("taxiView");
+  if (!box || planIssue) return;
+  const orders = urgentOrders();
+  const savedRub = [...taxiDone.values()].reduce((s, o) => s + (o.vanRub - o.taxiRub), 0);
+  const items = orders.map(o => {
+    const done = taxiDone.get(o.id);
+    const due = elapsed >= o.t;
+    const btn = h("button", {class: "btn small primary", type: "button"}, "Подтвердить операцию");
+    btn.addEventListener("click", () => {
+      const car = "WB-такси " + (100 + Math.floor(o.km * 7) % 900);
+      const startMin = Math.max(elapsed, o.t);
+      taxiDone.set(o.id, {...o, car, startMin, at: clockAt(startMin), eta: clockAt(startMin + o.taxiMin)});
+      taxiLog.unshift(clockAt(Math.max(elapsed, o.t)) + " · " + car + " → " + pvzName(o.p) + " · " + o.taxiRub + " ₽");
+      renderTaxi(); updateTaxiMap();
+      map.fitBounds([SC_NODES.sc1.latlng, o.p.latlng], {paddingTopLeft: [40, 120], paddingBottomRight: [260, 130], maxZoom: 14});
+    });
+    const alt = h("button", {class: "btn small", type: "button"}, "Отдельная «Газель»");
+    alt.addEventListener("click", () => { taxiDone.set(o.id, {...o, van: true, taxiRub: o.vanRub, at: clockAt(Math.max(elapsed, o.t)), eta: clockAt(Math.max(elapsed, o.t) + o.vanMin)}); renderTaxi(); });
+    return h("div", {class: "tx-item" + (done ? " done" : due ? " due" : "")},
+      h("div", {class: "tx-top"}, h("b", {}, clockAt(o.t) + " · 1 заказ → " + pvzName(o.p)), h("span", {class: "lg-st " + (done ? "done" : due ? "go" : "plan")}, done ? (done.van ? "Газель" : "Такси назначено") : due ? "Срочно" : "Ожидается")),
+      h("small", {}, o.reason + (o.nextVan ? " · ближайший рейс " + o.nextVan + " идёт не на этот адрес" : "")),
+      h("div", {class: "tx-cmp"},
+        h("div", {class: "tx-opt best"}, h("small", {}, "Попутное такси WB"), h("b", {}, o.taxiRub + " ₽ · " + Math.round(o.taxiMin) + " мин"), h("em", {}, o.km.toFixed(1).replace(".", ",") + " км, водитель едет полупустым")),
+        h("div", {class: "tx-opt"}, h("small", {}, "Отдельный выезд «Газели»"), h("b", {}, o.vanRub + " ₽ · " + Math.round(o.vanMin) + " мин"), h("em", {}, "туда и обратно"))),
+      done
+        ? h("div", {class: "tx-done"}, "✓ " + (done.van ? "Газель отправлена" : done.car + " назначено") + " в " + done.at + " · прибытие ≈ " + done.eta + " · задание в журнале" + (done.van ? "" : " · жёлтый пунктир на карте"))
+        : h("div", {class: "tx-btns"}, btn, alt));
+  });
+  box.replaceChildren(
+    h("h4", {class: "lg-title"}, "Срочные заказы → такси WB", h("span", {class: "pill-count"}, String(orders.filter(o => !taxiDone.has(o.id) && elapsed >= o.t).length))),
+    h("p", {class: "hint"}, "Срочный заказ не ждёт рейса: система находит полупустое такси сети WB, которое едет мимо, и считает цену и срок против отдельного выезда «Газели». Логист подтверждает операцию."),
+    ...items,
+    h("div", {class: "tx-sum"}, "Подтверждено: " + taxiDone.size + " из " + orders.length + " · экономия против отдельных выездов " + fmtRub(savedRub)),
+    taxiLog.length ? h("small", {class: "hint"}, "Журнал: " + taxiLog.slice(0, 3).join(" · ")) : null,
+    h("small", {class: "hint"}, "Попутный тариф такси (" + TAXI.pickupRub + " ₽ подача + " + TAXI.perKm + " ₽/км) — допущение команды, проверяется в пилоте."),
   );
 }
 
@@ -154142,6 +154319,8 @@ function updateClock(force=false) {
   renderLiveExtras();
   renderLiveTime();
   renderLogist();
+  updateTaxiMap();
+  if (!window.__txT || Math.floor(elapsed / 10) !== window.__txT) { window.__txT = Math.floor(elapsed / 10); renderTaxi(); }
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {
@@ -154296,7 +154475,7 @@ function recalculateAll(){
   renderDecision();
   renderFormulas();
   renderBusiness();
-  logistDecisions.clear();renderLogist(true);
+  logistDecisions.clear();renderLogist(true);taxiDone.clear();renderTaxi();updateTaxiMap();
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
 }

@@ -73,7 +73,7 @@ function renderLogist(force = false) {
         h("small", {}, "Система предлагает: " + (r.mode === "hybrid" ? "через " + pvzName(r.hub) : "через СЦ-2") + " — " + why),
         tip ? h("small", {class: "tip"}, tip) : null),
       dec ? h("span", {class: "lg-st done"}, "✓ " + dec) : h("div", {class: "lg-ex-btns"},
-        btn(list.length > 1 ? "Подтвердить все" : "Подтвердить", "подтверждено", "primary"),
+        btn(list.length > 1 ? "Подтвердить операцию для всех" : "Подтвердить операцию", "подтверждено", "primary"),
         btn(r.mode === "hybrid" ? "Через СЦ-2" : "Ждать хаб", r.mode === "hybrid" ? "через СЦ-2" : "ждём хаб")));
   }) : [h("p", {class: "lg-ok"}, "✓ Исключений нет — все партии смены решены автоматически")];
 
@@ -81,7 +81,8 @@ function renderLogist(force = false) {
     h("div", {class: "lg-head"},
       h("small", {}, "Пульт логиста · городская доставка WB · " + (REGION_CATALOGS[regionId]?.city || "Йошкар-Ола")),
       h("b", {}, "Смена 08:00–16:00 · сейчас " + clockAt(elapsed)),
-      h("p", {}, "Система сама решает по каждой партии: через ПВЗ-хаб по пути или через СЦ-2. Вы подтверждаете только исключения.")),
+      h("p", {}, "Система сама решает по каждой партии: через ПВЗ-хаб по пути или через СЦ-2. Вы подтверждаете только исключения."),
+      (() => { const b = h("button", {class: "lg-jump", type: "button"}, "🚕 Срочные заказы → такси WB ↓"); b.addEventListener("click", () => el("taxiView").scrollIntoView({behavior: "smooth", block: "start"})); return b; })()),
     h("div", {class: "lg-kpis"},
       kpi("Решено автоматически", auto + " из " + trips.length, "партий смены", "good"),
       kpi("Через ПВЗ-хабы", viaHub.length + " партий", viaHub.reduce((s, r) => s + r.n, 0) + " коробок мимо СЦ-2"),

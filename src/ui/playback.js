@@ -95,6 +95,8 @@ function updateClock(force=false) {
   renderLiveExtras();
   renderLiveTime();
   renderLogist();
+  updateTaxiMap();
+  if (!window.__txT || Math.floor(elapsed / 10) !== window.__txT) { window.__txT = Math.floor(elapsed / 10); renderTaxi(); }
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {

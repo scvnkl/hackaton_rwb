@@ -116,7 +116,7 @@ function recalculateAll(){
   renderDecision();
   renderFormulas();
   renderBusiness();
-  logistDecisions.clear();renderLogist(true);
+  logistDecisions.clear();renderLogist(true);taxiDone.clear();renderTaxi();updateTaxiMap();
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
 }
