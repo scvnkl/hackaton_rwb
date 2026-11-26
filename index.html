@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
-      WB ПВЗ — СЦ 1 (Медведево) → СЦ 2 vs Гибридный ПВЗ-склад → Конечный ПВЗ
+      WB ПВЗ — Доставка WB через СЦ или ПВЗ-склад
     </title>
 
     <link rel="stylesheet" href="vendor/leaflet/leaflet.css" />
@@ -14,9 +14,12 @@
     <script defer src="data/locations.js"></script>
     <script defer src="data/atlas.js"></script>
     <script defer src="data/routes.js"></script>
-    <script defer src="data/cities/yoshkar-ola/matrix.json.js"></script>
+    <script defer src="data/regions/catalogs.js"></script>
+    <script defer src="data/regions/roads.js"></script>
     <script defer src="src/core/geo.js"></script>
     <script defer src="src/core/loadindex.js"></script>
+    <script defer src="src/core/regions.js"></script>
+    <script defer src="src/core/roads.js"></script>
     <script defer src="src/core/sla.js"></script>
     <script defer src="src/core/sweep.js"></script>
     <script defer src="src/ui/presets.js"></script>
@@ -37,7 +40,7 @@
         <div class="brand-badge">WB SIM</div>
         <div>
           <div class="brand-title">
-            СЦ 1 (Медведево) → СЦ 2 vs Гибридный ПВЗ-склад → Конечный ПВЗ
+            Доставка WB через СЦ или ПВЗ-склад
           </div>
           <div class="brand-sub" id="headerSubStatus">
             Схема по вашей карте • Йошкар-Ола ↔ Чебоксары
@@ -132,6 +135,14 @@
 
         <div class="box">
           <div class="box-title">2. Конечный ПВЗ и промежуточный узел</div>
+          <label>Регион <select class="pvz-select" id="regionSelect"></select></label>
+          <details class="audit"><summary>Данные региона и дорожное покрытие</summary>
+            <p class="muted-note" id="catalogStatus"></p>
+            <label>Подключить справочник региона <input id="regionFile" type="file" accept=".json,application/json" /></label>
+            <p id="importStatus" role="status"></p>
+            <button class="seg-btn" id="retryRoads">Обновить дороги Valhalla</button>
+          </details>
+          <small id="roadStatus" class="muted-note" role="status"></small>
           <select class="pvz-select" id="finalPvzSelect"></select>
 
           <div class="chain-banner" id="chainExplanation">
@@ -164,6 +175,7 @@
             <button class="seg-btn" data-size="oversize">Габаритная</button>
           </div>
 
+          <label id="bulkConsentRow" class="muted-note" hidden><input id="bulkConsent" type="checkbox" /> Покупатель согласен на габаритный гибрид (+120 ₽)</label>
           <div class="route-option" id="optDirect">
             <div class="route-top">
               <span>Вариант А (без гибрида): СЦ 1 → СЦ 2 → Конечный ПВЗ</span>
@@ -218,7 +230,7 @@
                 required
             /></label>
             <label
-              ><input id="useCompetition" type="checkbox" /> Учитывать соседние
+              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние
               ПВЗ</label
             >
             <label
@@ -309,18 +321,16 @@
           <div class="map-legend-box">
             <div class="road-legend">
               <span
-                ><i class="classic-line line-sample"></i>Без гибрида: СЦ 1
-                (Медведево) → СЦ 2 → Конечный ПВЗ</span
+                ><i class="classic-line line-sample"></i>Без гибрида: СЦ 1 → СЦ 2 → Конечный ПВЗ</span
               >
               <span
-                ><i class="hybrid-line line-sample"></i>Гибрид: СЦ 1 (Медведево)
+                ><i class="hybrid-line line-sample"></i>Гибрид: СЦ 1
                 → Гибридный ПВЗ-склад → Конечный ПВЗ</span
               >
             </div>
             <div class="muted-note">
-              <strong>СЦ 1</strong> — начальный у Медведево (Р173);
-              <strong>СЦ 2</strong> — промежуточный между Медведево и началом
-              города (Руэм); <strong>СКЛ</strong> — гибридный ПВЗ-склад;
+              <strong>СЦ 1</strong> — начальный склад;
+              <strong>СЦ 2</strong> — промежуточный центр; <strong>СКЛ</strong> — гибридный ПВЗ-склад;
               <strong>КОН</strong> — конечный ПВЗ.
             </div>
           </div>

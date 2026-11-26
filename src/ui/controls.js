@@ -11,7 +11,7 @@ function storeAction(action) {
     )
       msg =
         "Отказ: партия уже на полке, недостаточно места или превышены габариты.";
-    else Object.assign(entry, { units: 10, litres: 10 * unit, unit, fee: 0 });
+    else Object.assign(entry, { units: 10, litres: 10 * unit, unit });
   }
   if (action === "sell" && entry.units >= 2) {
     entry.units -= 2;
@@ -24,13 +24,6 @@ function storeAction(action) {
 }
 function recalculateAll() {
   for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
-    if (!el(id).checkValidity()) {
-      stopClock();
-      el(id).reportValidity();
-      return;
-    }
-  }
-  for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
     let f = el(id);
     if (!f.reportValidity()) {
       stopClock();
@@ -38,6 +31,7 @@ function recalculateAll() {
     }
   }
   stopClock();
+  el("bulkConsentRow").hidden = parcelSize !== "oversize";
   elapsed = 0;
   const final = PVZ_LIST.find((p) => p.id === finalPvzId);
   activeChain.finalPvz = final;
@@ -52,7 +46,7 @@ function recalculateAll() {
   activeChain.directKm = previews.direct?.outKm;
   activeChain.hybridKm = h?.outKm;
   el("headerSubStatus").textContent =
-    "Дорожная сеть OpenStreetMap · учебный пилот · координаты СЦ 1 и СЦ 2 приблизительные";
+    "Диспетчер WB · модель смены · координаты СЦ сценарные";
   el("mDirectKm").textContent = previews.direct
     ? previews.direct.outKm.toFixed(2) + " км"
     : "—";
@@ -99,11 +93,7 @@ function recalculateAll() {
 }
 
 function populateSelect() {
-  const list =
-    geoMode === "local"
-      ? PVZ_LIST.filter((p) => p.city === "Йошкар-Ола")
-      : PVZ_LIST.filter((p) => p.city === "Чебоксары");
-
+  const list = PVZ_LIST;
   el("finalPvzSelect").replaceChildren(
     ...list.map(
       (p) => new Option("Конечный ПВЗ (" + p.city + "): " + p.name, p.id),
@@ -118,28 +108,11 @@ function populateSelect() {
 
 function onFinalPvzChange() {
   finalPvzId = document.getElementById("finalPvzSelect").value;
-  recalculateAll();
+  refreshDestination();
 }
 
 function setGeo(g) {
-  geoMode = g;
-  document.getElementById("geoLocal").classList.toggle("active", g === "local");
-  document
-    .getElementById("geoInter")
-    .classList.toggle("active", g === "intercity");
-  populateSelect();
-  if (g === "local") {
-    map.setView([56.635, 47.845], 12);
-  } else {
-    map.fitBounds(
-      [
-        [56.06, 47.15],
-        [56.67, 47.96],
-      ],
-      { padding: [40, 40] },
-    );
-  }
-  recalculateAll();
+  configureRegion(g === "intercity" ? "cheboksary" : "yoshkar-ola");
 }
 
 function setSize(sz) {
@@ -169,12 +142,11 @@ function setStyleMode(m) {
   document
     .getElementById("btnSat")
     .classList.toggle("active", m === "satellite");
-  if (m === "vector") {
-    if (map.hasLayer(satLayer)) map.removeLayer(satLayer);
-  } else {
-    if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
-    satLayer.addTo(map);
-    satLayer.redraw();
+  const nativeAtlas = ["yoshkar-ola","cheboksary"].includes(regionId);
+  const visible = m === "satellite" ? satLayer : (nativeAtlas ? localAtlas : streetLayer);
+  for (const layer of [satLayer, streetLayer, localAtlas]) {
+    if (layer !== visible) map.removeLayer(layer);
   }
+  visible.addTo(map);
   setTimeout(() => map.invalidateSize(), 100);
 }

@@ -1,14 +1,15 @@
 const map = L.map("map", { zoomControl: true }).setView([56.635, 47.845], 12);
 const streetLayer = L.tileLayer(
-  "https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}",
-  { maxZoom: 19, attribution: "&copy; Esri" },
+  "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  { maxZoom: 19, attribution: "© OpenStreetMap contributors" },
 );
 const satLayer = L.tileLayer(
   "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
   { maxZoom: 19, attribution: "&copy; Esri" },
 );
 
-new VectorAtlas(atlasData).addTo(map);
+const localAtlas = new VectorAtlas(atlasData).addTo(map);
+const pointRenderer = L.canvas();
 map.attributionControl.addAttribution(
   document.querySelector("#map-credit").innerHTML,
 );
@@ -50,12 +51,10 @@ function renderMarkers() {
   markersLayer.clearLayers();
   const { hubPvz, finalPvz } = activeChain;
 
-  const visiblePvz =
-    geoMode === "local"
-      ? PVZ_LIST.filter((p) => p.city === "Йошкар-Ола")
-      : PVZ_LIST.filter((p) => p.city === finalPvz.city);
-
+  const visiblePvz = PVZ_LIST;
+  const bounds = map.getBounds().pad(0.1);
   visiblePvz.forEach((pvz) => {
+    if (!bounds.contains(pvz.latlng) && pvz.id !== finalPvzId && pvz !== hubPvz) return;
     const pct = calcLoadPct(pvz);
     const isFinal = pvz.id === finalPvz.id;
     const isHub = routeMode === "hybrid" && hubPvz && pvz.id === hubPvz.id;
@@ -82,12 +81,15 @@ function renderMarkers() {
       : isHub
         ? "ГИБРИДНЫЙ ПВЗ-СКЛАД"
         : "ПВЗ";
-    const m = L.marker(pvz.latlng, { icon }).addTo(markersLayer);
-    m.bindTooltip(`${roleLabel}: ${pvz.name} (${pct}%)`, { direction: "top" });
+    const m = visiblePvz.length > 350 && !isFinal && !isHub
+      ? L.circleMarker(pvz.latlng, {radius:5, color: pct > 80 ? "#bd354d" : "#7c3caa", renderer:pointRenderer})
+      : L.marker(pvz.latlng, {icon});
+    const tip = document.createElement("span");
+    tip.textContent = roleLabel + " · " + pvz.name + " · модельная загрузка " + pct + "%";
+    m.addTo(markersLayer).bindTooltip(tip, {direction:"top"});
     m.on("click", () => {
-      finalPvzId = pvz.id;
-      document.getElementById("finalPvzSelect").value = finalPvzId;
-      recalculateAll();
+      el("finalPvzSelect").value = pvz.id;
+      onFinalPvzChange();
     });
   });
 

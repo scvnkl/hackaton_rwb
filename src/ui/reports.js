@@ -19,7 +19,9 @@ function econTable() {
   function row(label, format) {
     addRow(body, [label, ...cols.map((r) => (r ? format(r) : "—"))]);
   }
-  addRow(body, ["Базовый тариф", rub(customerTariff()), rub(customerTariff())]);
+  row("Тариф классики для той же партии", r => rub(r.referencePrice));
+  row("Скидка из экономии", r => rub(r.discount));
+  row("Доплата за габарит", r => rub(r.premium));
   row("К оплате за выбранный маршрут", (r) => rub(r.price));
   const labels = new Set(cols.flatMap((r) => (r ? Object.keys(r.rows) : [])));
   for (const k of labels) row(k, (r) => rub((r.rows[k] || 0) / r.n));
@@ -35,6 +37,11 @@ function econTable() {
   row("Компенсация покупателю (SLA) / оплаченный заказ", (r) =>
     rub(r.compPerOrder),
   );
+  row("ПВЗ-хаб · вклад после труда, до аренды", r => rub((r.pvzHub -
+    r.res.reduce((s,v) => s + v.work * CONFIG.hubWorkPerMin, 0)) / r.n));
+  row("Продавец · хранение", r => rub(r.seller.storage / r.n));
+  row("Продавец · остаток от продажи после логистики", r =>
+    rub((CONFIG.sellerGrossPerSale * (r.issued-r.returned) - r.seller.total) / r.n));
   row("Расходы продавца", (r) => rub(r.seller.total / r.n));
   row(
     "До прибытия в конечный ПВЗ",

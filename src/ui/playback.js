@@ -33,6 +33,8 @@ function updateClock() {
       pos = a.slice(0, 2).map((v, j) => v + (b[j] - v) * f);
     } else pos = nodeLatLng(p.id);
     const label = "Машина " + r.van + " · " + p.text;
+    const tip = document.createElement("span");
+    tip.textContent = label;
     let m = L.marker(pos, {
       icon: L.divIcon({
         className: "",
@@ -42,7 +44,7 @@ function updateClock() {
       }),
       zIndexOffset: 900,
     })
-      .bindTooltip(label)
+      .bindTooltip(tip)
       .addTo(trucksLayer);
     markers.set(r.van, m);
     text += label + "; ";

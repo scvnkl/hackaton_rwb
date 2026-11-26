@@ -21,6 +21,7 @@ for (const button of document.querySelectorAll("[data-stock]"))
   button.addEventListener("click", () => storeAction(button.dataset.stock));
 for (const id of [
   "storageDays",
+  "bulkConsent",
   "useCompetition",
   "batch",
   "dim0",
@@ -39,13 +40,30 @@ el("scrub").addEventListener("input", (event) => {
   elapsed = Number(event.target.value);
   updateClock();
 });
-el("stockPoint").replaceChildren(
-  ...PVZ_LIST.map((p) => new Option(p.name, p.id)),
-);
 for (const b of document.querySelectorAll("[data-preset]"))
   b.addEventListener("click", () => applyPreset(b.dataset.preset));
 el("storageRate").textContent = rub(CONFIG.storagePerBoxDay);
 el("scrub").max = CONFIG.shiftMinutes;
-populateSelect();
-recalculateAll();
+function regionOptions() {
+  el("regionSelect").replaceChildren(...Object.entries(REGION_CATALOGS).map(([key,c]) =>
+    new Option(c.city + (c.boundary ? "" : " · пилотная зона"), key)));
+}
+regionOptions();
+el("regionSelect").addEventListener("change", e => configureRegion(e.target.value));
+el("retryRoads").addEventListener("click", refreshDestination);
+el("regionFile").addEventListener("change", async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  try {
+    const catalog = validateCatalog(JSON.parse(await file.text()));
+    const key = "import-" + crypto.randomUUID();
+    REGION_CATALOGS[key] = catalog;
+    regionOptions();
+    configureRegion(key);
+    el("importStatus").textContent = "Загружен регион " + catalog.city;
+  } catch (error) { el("importStatus").textContent = error.message; }
+  e.target.value = "";
+});
+map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
+configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);

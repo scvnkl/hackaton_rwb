@@ -14,12 +14,10 @@ let activeChain = {
 const el = (id) => document.getElementById(id),
   val = (id) => Number(el(id).value),
   rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " ₽";
-const nodeName = (id) =>
-  ({
-    "sc-1": "СЦ 1 · Медведево",
-    "sc-2": "СЦ 2 · Руэм",
-    "sc-ch": "СЦ Чебоксары",
-  })[id] || PVZ_LIST.find((p) => p.id === id)?.name;
+const nodeName = id => {
+  const depot = Object.values(SC_NODES).find(p => p.id === id);
+  return depot ? depot.label.replace(/\n/g, " · ") : cityById.get(id)?.name;
+};
 const pathName = (r) => r.ids.map(nodeName).join(" → ");
 const volumes = {
   small: [25, 20, 10, 2],

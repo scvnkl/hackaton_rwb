@@ -3,13 +3,19 @@ const CONFIG = {
   // сортировочные центры
   buyerBase: { small: 119, medium: 179, oversize: 340 },
   intercityFee: 140,
+  distanceShare: 0.5,       // доля километрового расхода пути к покупателю в тарифе
+  buyerSavingsShare: 0.25,  // доля устранимых затрат для покупателя
+  bulk: { premium: 120, hub: 50, loader: 40 },
+  hubWorkPerMin: 4,
+  sellerGrossPerSale: 180, // условная маржа товара до логистики
+
   incidentFee: 12,
   sc1PerBox: 20,
   sc2PerBox: 52,
   scChPerBox: 25,
 
   // ПВЗ
-  hubPerBox: { small: 16, medium: 16, oversize: 80 },
+  hubPerBox: { small: 16, medium: 16, oversize: 16 },
   finalPvzPerBox: 10,
 
   // транспорт
@@ -27,9 +33,6 @@ const CONFIG = {
   // сеть ПВЗ
   network: { catchmentM: 400, refDensity: 1.2, maxAdj: 12, maxLoadForHub: 80 },
 
-  // синтетические плечи
-  avgKmh: 32,
-  detour: 1.35,
 
   // продавец
   sellerPerBox: 55,

@@ -1,14 +1,16 @@
 function choose(mode, n, t, incident, book, baselineStart = t) {
   const base = trip("direct", null, n, baselineStart, incident);
-  if (mode === "direct") return base;
+  if (mode === "direct" || !base) return base;
   let best,
     overloaded = 0,
     slaBlocked = 0,
     capacityBlocked = 0;
+  if (parcelSize === "oversize" && !el("bulkConsent").checked) {
+    base.reason = "Габаритный гибрид требует согласия на доплату";
+    return base;
+  }
   if (fits())
-    for (const p of PVZ_LIST.filter(
-      (p) => p.city === activeChain.finalPvz.city && p.id !== finalPvzId,
-    )) {
+    for (const p of hubPool) {
       if (calcLoadPct(p) > CONFIG.network.maxLoadForHub) {
         overloaded++;
         continue;
@@ -20,6 +22,11 @@ function choose(mode, n, t, incident, book, baselineStart = t) {
         slaBlocked++;
         continue;
       }
+      r.referencePrice = base.price;
+      r.premium = parcelSize === "oversize" ? CONFIG.bulk.premium : 0;
+      r.discount = r.premium ? 0 : Math.floor(CONFIG.buyerSavingsShare * Math.max(0, base.costs - r.costs) / n);
+      r.price = Math.max(0, r.referencePrice + r.premium - r.discount);
+      r.income = r.price * (r.issued - r.returned);
       r.compPerOrder = Math.min(r.price, slaCompensation(extra));
       r.price -= r.compPerOrder;
       r.comp = r.compPerOrder * (r.issued - r.returned);
@@ -60,7 +67,7 @@ function choose(mode, n, t, incident, book, baselineStart = t) {
     }
   if (best && (!base || best.margin >= base.margin)) return best;
   if (!base) return null;
-  base.reason = best
+  base.reason = !fits() ? "Упаковка превышает допустимые параметры пилота" : best
     ? "Через СЦ выгоднее для WB"
     : [
         overloaded && "Загрузка выше " + CONFIG.network.maxLoadForHub + "%",
@@ -68,7 +75,7 @@ function choose(mode, n, t, incident, book, baselineStart = t) {
         capacityBlocked && "Не хватает полки или времени персонала",
       ]
         .filter(Boolean)
-        .join(" · ") || "Нет подходящего ПВЗ по габаритам";
+        .join(" · ") || "Нет доступного дорожного маршрута через хаб";
   base.canWait = capacityBlocked > 0;
   return base;
 }
@@ -95,6 +102,8 @@ function schedule(mode) {
         }
       }
     }
+    if (r?.mode === "hybrid" && r.end > CONFIG.shiftMinutes)
+      r = choose("direct", n, t, incident, book);
     if (!r || r.end > CONFIG.shiftMinutes) break;
     r.van = v + 1;
     fleet[v] = r.end;
