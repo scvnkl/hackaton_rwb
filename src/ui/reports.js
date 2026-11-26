@@ -112,6 +112,25 @@ function report() {
       rub(m.margin),
     ]);
   }
+  const body = view.querySelector("section");
+  const service = document.createElement("p");
+  const p95 = mode => {
+    const value = issuedP95(runs[mode]);
+    return value === null ? "—" : value + " мин";
+  };
+  service.textContent = "p95 от готовности партии до выдачи: СЦ " + p95("direct") +
+    ", гибрид " + p95("hybrid") + ".";
+  body.append(service);
+  const directPaid = classic.issued - classic.back, hybridPaid = hybrid.issued - hybrid.back;
+  if (directPaid > 0 && hybridPaid > 0) {
+    const directUnit = (classic.margin + CONFIG.shiftFixed) / directPaid;
+    const hybridUnit = (hybrid.margin + CONFIG.shiftFixed) / hybridPaid;
+    const breakdown = document.createElement("p");
+    breakdown.textContent = "Разница результата WB: " + rub((hybridUnit-directUnit)*hybridPaid) +
+      " за счёт изменения вклада на заказ и " + rub((hybridPaid-directPaid)*directUnit) +
+      " за счёт разницы в оплаченных выдачах.";
+    body.append(breakdown);
+  }
   return view;
 }
 function renderAnalyticsDrawer() {

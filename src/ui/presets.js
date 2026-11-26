@@ -74,7 +74,7 @@ function applyPreset(key) {
   // Городские кейсы работают в выбранном регионе. Для магистрали есть межгородской набор.
   if (key === "trunk") setGeo("intercity");
   else if (geoMode === "intercity") setGeo("local");
-  else recalculateAll();
+  else updateParameters();
 
   const cap = el("presetCaption");
   if (cap) cap.textContent = "Сценарий: " + p.label;

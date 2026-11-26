@@ -4,6 +4,7 @@ let regionId = "yoshkar-ola";
 let networkPoints = [];
 let cityById = new Map();
 let hubPool = [];
+let neighborhood;
 let roadGeneration = 0;
 const regionStock = new Map();
 
@@ -13,7 +14,7 @@ function samePlace(a, b) {
 
 function setNetwork(key) {
   const catalog = REGION_CATALOGS[key];
-  const original = pilotPoints.filter(p => p.city === catalog.city)
+  const original = pilotPoints.filter(p => ["yoshkar-ola","cheboksary"].includes(key) && p.city === catalog.city)
     .map(p => ({...p, brand: "wb"}));
   networkPoints = original.slice();
   const ids = new Set(original.map(p => p.id));
@@ -53,11 +54,13 @@ function candidatePoints() {
   const ranked = others.map(p => [p, distance(p)]).sort((a,b) => a[1] - b[1]);
   // Проверяем дорожную стоимость коридора и все узлы архивного тестового рейса.
   const base = others.filter(p => pilotPoints.some(legacy => p.id === legacy.id));
-  for (const [p] of ranked.slice(0, 5)) if (!base.includes(p)) base.push(p);
+  const available = ranked.filter(([p]) => calcLoadPct(p) <= CONFIG.network.maxLoadForHub);
+  for (const [p] of [...ranked.slice(0,5), ...available.slice(0,5)]) if (!base.includes(p)) base.push(p);
   return base;
 }
 
 function configureRegion(key) {
+  citySearch?.abort();
   const catalog = REGION_CATALOGS[key];
   const prior = regionId;
   regionStock.set(prior, new Map(stock));

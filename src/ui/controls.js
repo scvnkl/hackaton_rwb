@@ -19,8 +19,13 @@ function storeAction(action) {
   }
   if (action === "day") entry.fee += entry.units * CONFIG.storagePerBoxDay;
   stock.set(id, entry);
-  recalculateAll();
+  updateParameters();
   el("stockStatus").textContent += msg;
+}
+function updateParameters() {
+  const next = candidatePoints();
+  if (next.length !== hubPool.length || next.some((p,i) => hubPool[i] !== p)) refreshDestination();
+  else recalculateAll();
 }
 function recalculateAll() {
   for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
@@ -52,6 +57,12 @@ function recalculateAll() {
     : "—";
   el("mHybridKm").textContent = h ? h.outKm.toFixed(2) + " км" : "—";
   el("mFinalLoad").textContent = calcLoadPct(final) + "%";
+  const {counts,nearest} = neighborhood;
+  const available = room(final);
+  el("loadDetail").textContent = "В 1,6 км от выбранного ПВЗ: WB " + counts.wb + ", Ozon " +
+    counts.ozon + ", Яндекс Маркет " + counts.ym + ". Ближайший сосед: " +
+    (Number.isFinite(nearest) ? Math.round(nearest) + " м" : "нет в справочнике") +
+    ". Модельная загрузка " + calcLoadPct(final) + "%, свободно " + Math.round(available.litres) + " л.";
   el("priceDirect").textContent = tariffLabel("direct");
   el("priceHybrid").textContent = tariffLabel("hybrid");
   el("metaHybrid").textContent = !h
@@ -143,10 +154,13 @@ function setStyleMode(m) {
     .getElementById("btnSat")
     .classList.toggle("active", m === "satellite");
   const nativeAtlas = ["yoshkar-ola","cheboksary"].includes(regionId);
-  const visible = m === "satellite" ? satLayer : (nativeAtlas ? localAtlas : streetLayer);
-  for (const layer of [satLayer, streetLayer, localAtlas]) {
-    if (layer !== visible) map.removeLayer(layer);
+  if (REGION_STREETS[regionId] && !regionAtlases.has(regionId))
+    regionAtlases.set(regionId, new VectorAtlas(REGION_STREETS[regionId]));
+  const background = nativeAtlas ? localAtlas : regionAtlases.get(regionId);
+  const visible = m === "satellite" ? [satLayer] : [background, nativeAtlas ? null : streetLayer].filter(Boolean);
+  for (const layer of [satLayer, streetLayer, localAtlas, ...regionAtlases.values()]) {
+    if (!visible.includes(layer)) map.removeLayer(layer);
   }
-  visible.addTo(map);
+  for (const layer of visible) layer.addTo(map);
   setTimeout(() => map.invalidateSize(), 100);
 }

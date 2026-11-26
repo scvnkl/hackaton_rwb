@@ -39,3 +39,15 @@ function effectiveLoad(p) {
   const adjustment = Math.round(cfg.maxAdj * Math.tanh((cfg.refDensity - competitionIndex(p)) / 1.5));
   return Math.min(95, Math.max(20, base + adjustment));
 }
+
+function summarizeNeighborhood(point) {
+  const counts = {wb:0, ozon:0, ym:0};
+  let nearest = Infinity;
+  for (const other of networkPoints) {
+    if (other.id === point.id) continue;
+    const meters = haversineM(point.latlng, other.latlng);
+    nearest = Math.min(nearest, meters);
+    if (meters <= CONFIG.network.catchmentM * 4) counts[other.brand]++;
+  }
+  return {counts, nearest};
+}

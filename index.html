@@ -15,10 +15,12 @@
     <script defer src="data/atlas.js"></script>
     <script defer src="data/routes.js"></script>
     <script defer src="data/regions/catalogs.js"></script>
+    <script defer src="data/regions/streets.js"></script>
     <script defer src="data/regions/roads.js"></script>
     <script defer src="src/core/geo.js"></script>
     <script defer src="src/core/loadindex.js"></script>
     <script defer src="src/core/regions.js"></script>
+    <script defer src="src/core/citysearch.js"></script>
     <script defer src="src/core/roads.js"></script>
     <script defer src="src/core/sla.js"></script>
     <script defer src="src/core/sweep.js"></script>
@@ -138,6 +140,9 @@
           <label>Регион <select class="pvz-select" id="regionSelect"></select></label>
           <details class="audit"><summary>Данные региона и дорожное покрытие</summary>
             <p class="muted-note" id="catalogStatus"></p>
+            <p class="muted-note" id="loadDetail"></p>
+            <form id="regionSearch"><label>Другой город <input id="regionQuery" type="search" placeholder="Самара, Россия" required /></label>
+              <button class="seg-btn" type="submit">Найти ПВЗ</button></form>
             <label>Подключить справочник региона <input id="regionFile" type="file" accept=".json,application/json" /></label>
             <p id="importStatus" role="status"></p>
             <button class="seg-btn" id="retryRoads">Обновить дороги Valhalla</button>

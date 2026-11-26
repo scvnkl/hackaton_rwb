@@ -28,7 +28,7 @@ def build():
         source = re.sub(r"</script", lambda _: r"<\/script", source, flags=re.I)
         scripts.append("<script>\n" + source + "\n</script>")
         return ""
-    html = re.sub(r'<script defer src="([^"]+)"></script>', inline, html)
+    html = re.sub(r'^[ \t]*<script defer src="([^"]+)"></script>', inline, html, flags=re.M)
     return html.replace("</body>", "\n".join(scripts) + "\n</body>")
 
 

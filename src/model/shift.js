@@ -105,6 +105,7 @@ function schedule(mode) {
     if (r?.mode === "hybrid" && r.end > CONFIG.shiftMinutes)
       r = choose("direct", n, t, incident, book);
     if (!r || r.end > CONFIG.shiftMinutes) break;
+    r.ready = (sent + n) / rate;
     r.van = v + 1;
     fleet[v] = r.end;
     sent += n;
@@ -148,4 +149,21 @@ function metrics(mode, t, run = runs[mode]) {
     margin: margin - (CONFIG.shiftFixed * t) / CONFIG.shiftMinutes,
     finished,
   };
+}
+
+function issuedP95(run) {
+  const samples = [];
+  let orders = 0;
+  for (const r of run.trips) for (const scan of r.scans) {
+    if (scan.delta > 0) {
+      samples.push({minutes:scan.t - r.ready, orders:scan.delta});
+      orders += scan.delta;
+    }
+  }
+  if (!orders) return null;
+  let total = 0;
+  for (const sample of samples.sort((a,b) => a.minutes - b.minutes)) {
+    total += sample.orders;
+    if (total >= Math.ceil(orders * 0.95)) return Math.round(sample.minutes);
+  }
 }

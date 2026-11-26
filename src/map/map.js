@@ -9,6 +9,7 @@ const satLayer = L.tileLayer(
 );
 
 const localAtlas = new VectorAtlas(atlasData).addTo(map);
+const regionAtlases = new Map();
 const pointRenderer = L.canvas();
 map.attributionControl.addAttribution(
   document.querySelector("#map-credit").innerHTML,

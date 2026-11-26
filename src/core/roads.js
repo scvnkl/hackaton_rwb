@@ -78,6 +78,7 @@ async function refreshDestination() {
   activeRequest = controller;
   const generation = ++roadGeneration;
   hubPool = candidatePoints();
+  neighborhood = summarizeNeighborhood(cityById.get(finalPvzId));
   recalculateAll();
   const final = finalPvzId;
   const addReverse = (ids) => [...ids, ids.at(-2), final, "sc-1"];
@@ -102,5 +103,9 @@ async function refreshDestination() {
   }
   if (generation !== roadGeneration) return;
   status();
+  const time = elapsed, resume = playing;
   recalculateAll();
+  elapsed = time;
+  updateClock();
+  if (resume && elapsed < CONFIG.shiftMinutes) toggleSimulation();
 }

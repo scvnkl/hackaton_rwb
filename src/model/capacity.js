@@ -1,4 +1,4 @@
-function calcLoadPct(pvz) {
+function backgroundLoad(pvz) {
   if (LOAD_OVERRIDE !== null) return LOAD_OVERRIDE;
   if (el("stress").checked) return 99;
   const demandLoad = Math.min(
@@ -7,10 +7,13 @@ function calcLoadPct(pvz) {
   );
   return Math.max(5, Math.min(99, demandLoad + val("shelfSlider") - 100));
 }
+function calcLoadPct(pvz) {
+  return Math.min(100, backgroundLoad(pvz) + Math.ceil(inventory(pvz.id).litres / 3000 * 100));
+}
 const volume = () => (val("dim0") * val("dim1") * val("dim2")) / 1000;
 const inventory = (id) => stock.get(id) || { units: 0, litres: 0, fee: 0 };
 function room(p) {
-  const load = calcLoadPct(p);
+  const load = backgroundLoad(p);
   return {
     litres: Math.max(0, (3000 * (100 - load)) / 100 - inventory(p.id).litres),
     minutes: Math.max(0, (60 * (100 - load)) / 100 - 2),

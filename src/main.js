@@ -32,9 +32,9 @@ for (const id of [
   "incident",
   "stockPoint",
 ])
-  el(id).addEventListener("change", recalculateAll);
+  el(id).addEventListener("change", updateParameters);
 for (const id of ["truckCountSlider", "flowSlider", "shelfSlider"])
-  el(id).addEventListener("input", recalculateAll);
+  el(id).addEventListener("input", updateParameters);
 el("scrub").addEventListener("input", (event) => {
   stopClock();
   elapsed = Number(event.target.value);
@@ -49,14 +49,19 @@ function regionOptions() {
     new Option(c.city + (c.boundary ? "" : " · пилотная зона"), key)));
 }
 regionOptions();
+el("regionSearch").addEventListener("submit", e => {
+  e.preventDefault();
+  searchRegion(el("regionQuery").value.trim());
+});
 el("regionSelect").addEventListener("change", e => configureRegion(e.target.value));
 el("retryRoads").addEventListener("click", refreshDestination);
+let importNumber = 0;
 el("regionFile").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
   try {
     const catalog = validateCatalog(JSON.parse(await file.text()));
-    const key = "import-" + crypto.randomUUID();
+    const key = "import-" + (++importNumber);
     REGION_CATALOGS[key] = catalog;
     regionOptions();
     configureRegion(key);

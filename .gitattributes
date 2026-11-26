@@ -1,3 +1,5 @@
 data/atlas.js linguist-generated=true
 data/routes.js linguist-generated=true
 vendor/** linguist-vendored=true
+data/regions/*.js linguist-generated=true
+pvz-wb-real-streets-v12.html linguist-generated=true

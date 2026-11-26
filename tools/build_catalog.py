@@ -38,11 +38,16 @@ def build(place):
     query = (f'[out:json][timeout:90];area({area})->.a;'
              '(nwr(area.a)["shop"~"^(outpost|pickup|parcel_pickup)$"];'
              'nwr(area.a)["office"="delivery"];nwr(area.a)["amenity"="post_office"];);out center;')
-    for endpoint in ENDPOINTS:
+    # Крупные регионы надёжнее загружаются селективным индексом shop=outpost.
+    compact = (f'[out:json][timeout:90];area({area})->.a;'
+               'nwr["shop"="outpost"](area.a);out center;')
+    for endpoint, expression in [(url, expr) for expr in (query, compact) for url in ENDPOINTS]:
         try:
-            data = get(endpoint, {"data": query})
+            data = get(endpoint, {"data": expression})
             if data.get("remark"):
                 raise ValueError(data["remark"])
+            if not data.get("elements"):
+                raise ValueError("Пустой ответ Overpass")
             break
         except (OSError, ValueError) as exc:
             error = exc
