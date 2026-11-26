@@ -48,8 +48,11 @@ function econTable() {
     "До прибытия в конечный ПВЗ",
     (r) => Math.round(r.eta - r.start) + " мин",
   );
+  row("Δ срока к базовой схеме", r => previews.direct ? deltaMin((r.eta-r.start)-(previews.direct.eta-previews.direct.start)) : "—");
+  row("Обработка в промежуточном узле", r => { const t=timeBreakdown(r); return (t.sc+t.hub).toFixed(1)+" мин"; });
   row("Путь до выдачи", (r) => r.outKm.toFixed(2) + " км");
   row("Рейс с возвратом", (r) => Math.round(r.end - r.start) + " мин");
+  row("Машино-минут на заказ", r => ((r.end - r.start) / r.n).toFixed(1) + " мин");
   return view;
 }
 function report() {
@@ -150,7 +153,7 @@ function report() {
 function renderAnalyticsDrawer() {
   el("drawerSubtitle").textContent =
     "Сравнение при одинаковом спросе и парке машин";
-  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [report(), costBars(), sweepView()]));
+  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [report(), costBars(), timeView(), sweepView()]));
 }
 function toggleAnalyticsDrawer() {
   drawerOpen = !drawerOpen;

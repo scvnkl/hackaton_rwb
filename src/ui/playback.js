@@ -91,6 +91,7 @@ function updateClock(force=false) {
   updateMapContext(current,force);
   renderOpeningLot();
   renderLiveExtras();
+  renderLiveTime();
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {

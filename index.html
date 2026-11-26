@@ -96,9 +96,9 @@
             </label>
             <div class="chain" id="chainExplanation">Расчёт…</div>
             <div class="mini-metrics">
-              <div><b id="mDirectKm">— км</b><small>через СЦ-2</small></div>
-              <div><b id="mHybridKm">— км</b><small>через ПВЗ-хаб</small></div>
-              <div><b id="mFinalLoad">—%</b><small>загрузка конечного</small></div>
+              <div><b id="mDirectKm">— км</b><em id="mDirectMin"></em><small>через СЦ-2</small></div>
+              <div><b id="mHybridKm">— км</b><em id="mHybridMin"></em><small>через ПВЗ-хаб</small></div>
+              <div><b id="mFinalLoad">—%</b><em id="mTimeGain"></em><small>загрузка конечного</small></div>
             </div>
           </div>
 
@@ -249,6 +249,7 @@
         <div class="kpi-strip">
           <div class="kpi"><small>Выдано</small><b id="stDelivered">0</b></div>
           <div class="kpi accent" title="Разница остатка WB к базовой схеме по закрытым рейсам"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
+          <div class="kpi" title="Среднее время от выезда машины со СЦ-1 до выдачи партии в конечном ПВЗ"><small>Доставка партии</small><b id="stTime">—</b><em id="stTimeDelta"></em></div>
           <div class="kpi"><small>Доход ПВЗ-хабов</small><b class="payment-value" id="stPvzEarned">0 ₽</b></div>
           <div class="kpi"><small>Через ПВЗ / СЦ-2</small><b id="stSplit">0 / 0</b></div>
           <div class="kpi"><small>Машин в пути</small><b id="stActiveTrucks">0</b></div>

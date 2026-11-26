@@ -33,12 +33,12 @@ function setUnavailable(message){
   el("planStatus").textContent=message;
   el("btnToggleSim").disabled=true;el("scrub").disabled=true;
   el("scrub").value=0;el("simClock").textContent="Смена —";
-  for(const id of ["stDelivered","stActiveTrucks","stMpSaved","stPvzEarned","mDirectKm","mHybridKm","priceDirect","priceHybrid"])
+  for(const id of ["stDelivered","stActiveTrucks","stMpSaved","stPvzEarned","mDirectKm","mHybridKm","priceDirect","priceHybrid","stTime"])
     el(id).textContent="—";
   el("truckLegStatus").textContent="Ожидание расчёта";
   el("liveLog").textContent="";el("chainExplanation").textContent=message;
   el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
-  el("storedLot").hidden=true;renderDecision();el("stSplit").textContent="—";
+  el("storedLot").hidden=true;renderDecision();el("stTimeDelta").textContent="";el("mDirectMin").textContent="";el("mHybridMin").textContent="";el("stSplit").textContent="—";
   trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
@@ -102,10 +102,15 @@ function recalculateAll(){
   activeChain.directKm=d?.outKm;activeChain.hybridKm=h?.outKm;
   el("mDirectKm").textContent=d?d.outKm.toFixed(2)+" км":"—";
   el("mHybridKm").textContent=h?h.outKm.toFixed(2)+" км":"—";
+  el("mDirectMin").textContent=d?"⏱ "+mins(d.eta-d.start):"";
+  el("mHybridMin").textContent=h?"⏱ "+mins(h.eta-h.start):"";
+  el("mTimeGain").textContent="";
   el("metaDirect").textContent=d?.openingLot ? "Первая партия ожидает на СЦ 2. Машина выезжает из СЦ 1 за запасом." : "Обработка партии на СЦ 1 и СЦ 2.";
   el("priceDirect").textContent=tariffLabel("direct");el("priceHybrid").textContent=tariffLabel("hybrid");
   el("metaHybrid").textContent=!h?"Недостаточно дорожных данных":h.mode==="direct"?"Через СЦ за "+rub(h.price)+" / заказ. "+h.reason+".":
     h.premium ? "Тариф СЦ "+rub(h.referencePrice)+" + доплата "+rub(h.premium)+(h.compPerOrder?" − компенсация "+rub(h.compPerOrder):"")+" = "+rub(h.price)+" / заказ." : "К оплате с учётом скидки и SLA: "+rub(h.price)+" / заказ.";
+  el("metaDirect").textContent+=" "+timeMeta(d);
+  if(h)el("metaHybrid").textContent+=" "+timeMeta(h);
   el("costSplitCard").replaceChildren(econTable());
   updateClock(true);
   renderDecision();
