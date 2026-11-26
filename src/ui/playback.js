@@ -66,10 +66,12 @@ function updateClock(force=false) {
     classic = metrics("direct", elapsed);
   el("stDelivered").textContent = m.issued;
   el("stActiveTrucks").textContent = current.length;
-  el("stMpSaved").textContent = rub(m.margin - classic.margin);
+  // Экономия по уже доставленным партиям: сумма эффекта каждой партии к СЦ-2 (растёт по ходу смены).
+  el("stMpSaved").textContent = routeMode === "hybrid"
+    ? fmtRub(runs.hybrid.trips.reduce((s, r) => s + (r.mode === "hybrid" && r.eta <= elapsed ? (r.gain ?? 0) : 0), 0))
+    : "0 ₽";
   el("stPvzEarned").textContent = rub(m.pvzHub + m.pvzStorage);
-  el("simClock").textContent =
-    "Смена " +
+  el("simClock").textContent = clockAt(Math.floor(elapsed)) + " · смена " +
     Math.floor(elapsed / 60) +
     ":" +
     String(Math.floor(elapsed % 60)).padStart(2, "0");
@@ -92,6 +94,7 @@ function updateClock(force=false) {
   renderOpeningLot();
   renderLiveExtras();
   renderLiveTime();
+  renderLogist();
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {

@@ -766,7 +766,7 @@ h2, h3, h4 { margin: 0; }
 .workspace { flex: 1; display: grid; grid-template-columns: 420px 1fr; min-height: 0; }
 .side { overflow-y: auto; padding: 14px 14px 30px; border-right: 1px solid var(--line); background: var(--bg); }
 .tabs {
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px;
+  display: grid; grid-template-columns: repeat(5, 1fr); gap: 4px;
   background: #fff; padding: 4px; border-radius: 14px; margin-bottom: 12px; box-shadow: var(--shadow);
   position: sticky; top: 0; z-index: 5;
 }
@@ -1093,7 +1093,93 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
 .big-kpi b { font-size: 23px; }
 @media (max-width: 1440px) { .kpi b { font-size: 17px; } .kpi { padding: 8px 10px; } }
 .big-kpi.good-soft { background: var(--good-soft); } .big-kpi.good-soft b { color: var(--good); }
+
+/* ---------- вкладка «Эффект» ---------- */
+.biz-pitch { background: var(--wb-grad); color: #fff; border-radius: 14px; padding: 12px 14px; font-size: 13px; line-height: 1.45; margin-bottom: 12px; }
+.biz-pitch b { display: block; font-size: 15px; margin-bottom: 2px; }
+.seg.roles { grid-template-columns: repeat(4, 1fr); margin-bottom: 12px; }
+.seg.roles .seg-btn { padding: 7px 4px; font-size: 12px; }
+.biz-story { display: grid; gap: 6px; margin-bottom: 12px; }
+.biz-story > div { background: var(--bg); border-radius: 10px; padding: 8px 10px; }
+.biz-story > div.gain { background: var(--good-soft); }
+.biz-story small { font-size: 10.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .5px; color: var(--muted); }
+.biz-story .gain small { color: var(--good); }
+.biz-story p { margin: 2px 0 0; font-size: 13px; }
+.biz-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+.biz-tile { border: 1.5px solid var(--line); border-radius: 12px; padding: 9px 10px; display: flex; flex-direction: column; }
+.biz-tile small { font-size: 11px; color: var(--muted); font-weight: 600; line-height: 1.25; }
+.biz-tile b { font-size: 19px; font-weight: 800; letter-spacing: -.3px; margin-top: 2px; }
+.biz-tile em { font-style: normal; font-size: 11px; color: var(--muted); }
+.biz-tile.good { border-color: transparent; background: var(--wb-grad); color: #fff; }
+.biz-tile.good small, .biz-tile.good em { color: rgba(255,255,255,.85); }
+.biz-mock { border: 1.5px solid var(--line); border-radius: 12px; overflow: hidden; margin-top: 10px; }
+.biz-mock-head { display: flex; align-items: center; gap: 5px; background: var(--bg); padding: 6px 10px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+.biz-mock-head i { width: 8px; height: 8px; border-radius: 50%; background: #d8d2e2; }
+.biz-mock-head span { margin-left: 6px; }
+.biz-mock-body { padding: 6px 10px; }
+.mock-row { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; }
+.mock-row:last-child { border-bottom: 0; }
+.mock-row span { color: var(--muted); }
+.mock-row b { text-align: right; }
+.mock-row b.ok { color: var(--good); }
+.upgrade { background: var(--wb-soft); border-radius: 12px; padding: 10px 12px; margin: 8px 0; }
+.upgrade-toggle { margin: 0 0 8px; align-items: flex-start; }
+.upgrade-toggle span { display: flex; flex-direction: column; }
+.upgrade-toggle small { color: var(--muted); font-size: 11.5px; }
+.upgrade .field { margin-bottom: 4px; }
+.summary-table tr.total td { font-weight: 800; color: var(--wb-deep); border-top: 1.5px solid var(--wb-2); }
+.hint.assume { border-top: 1px solid var(--line); padding-top: 8px; margin-top: 10px; }
+
+/* ---------- пульт логиста ---------- */
+.tab { font-size: 13px; padding: 8px 2px; }
+.lg-head { background: var(--wb-grad); color: #fff; border-radius: 14px; padding: 12px 14px; margin-bottom: 10px; }
+.lg-head small { font-size: 11px; opacity: .85; font-weight: 700; text-transform: uppercase; letter-spacing: .4px; }
+.lg-head b { display: block; font-size: 16px; margin: 2px 0; }
+.lg-head p { margin: 0; font-size: 12.5px; opacity: .92; }
+.lg-kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 6px; }
+.lg-kpi { border: 1.5px solid var(--line); border-radius: 12px; padding: 8px; display: flex; flex-direction: column; }
+.lg-kpi small { font-size: 10.5px; color: var(--muted); font-weight: 700; line-height: 1.2; }
+.lg-kpi b { font-size: 16px; font-weight: 800; margin: 2px 0; white-space: nowrap; }
+.lg-kpi em { font-style: normal; font-size: 10.5px; color: var(--muted); line-height: 1.2; }
+.lg-kpi.good { background: var(--good-soft); border-color: transparent; }
+.lg-kpi.good b { color: var(--good); }
+.lg-title { display: flex; align-items: center; gap: 8px; font-size: 13.5px; font-weight: 800; margin: 14px 0 6px; }
+.lg-title small { font-weight: 500; color: var(--muted); font-size: 11.5px; margin-left: auto; }
+.pill-count { background: var(--bad); color: #fff; border-radius: 99px; font-size: 11px; padding: 0 7px; line-height: 18px; }
+.lg-ex { display: flex; justify-content: space-between; gap: 8px; align-items: center; background: #fff7e6; border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; }
+.lg-ex.done { background: var(--bg); }
+.lg-ex b { font-size: 12.5px; display: block; }
+.lg-ex small { font-size: 11.5px; color: #8a5a00; }
+.lg-ex-btns { display: flex; flex-direction: column; gap: 4px; flex: none; }
+.lg-ok { background: var(--good-soft); color: var(--good); border-radius: 10px; padding: 8px 10px; font-weight: 700; font-size: 12.5px; margin: 0; }
+.lg-table-wrap { max-height: 300px; overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; }
+.lg-table { width: 100%; border-collapse: collapse; font-size: 11.5px; }
+.lg-table th { position: sticky; top: 0; background: var(--bg); text-align: left; font-size: 10.5px; color: var(--muted); padding: 5px 6px; }
+.lg-table td { padding: 5px 6px; border-top: 1px solid var(--line); vertical-align: top; }
+.lg-table td small { display: block; color: var(--muted); font-size: 10.5px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lg-table tr { cursor: pointer; }
+.lg-table tr:hover td { background: #faf7fd; }
+.lg-table tr.now td { background: var(--wb-soft); }
+.lg-table tr.warn td:first-child { box-shadow: inset 3px 0 var(--warn); }
+.lg-table td.num { text-align: right; white-space: nowrap; }
+.lg-table .pos { color: var(--good); }
+.lg-route { font-weight: 800; font-size: 11.5px; }
+.lg-route.hub { color: var(--wb); }
+.lg-route.sc { color: var(--classic); }
+.lg-st { font-size: 10.5px; font-weight: 700; border-radius: 99px; padding: 1px 7px; white-space: nowrap; }
+.lg-st.plan { background: var(--bg); color: var(--muted); }
+.lg-st.go { background: var(--wb-soft); color: var(--wb-deep); }
+.lg-st.done { background: var(--good-soft); color: var(--good); }
+.lg-hub { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 12.5px; }
+.lg-hub small { grid-column: 1 / -1; color: var(--muted); font-size: 11px; }
+.lg-auto { margin-top: 12px; background: var(--bg); border-radius: 10px; padding: 8px 10px; font-size: 12.5px; }
+.lg-auto summary { cursor: pointer; font-weight: 700; }
+.lg-auto ul { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 4px; }
+.lg-auto li.manual { color: var(--wb-deep); font-weight: 600; margin-top: 4px; }
+.lg-ex small.tip { display: block; color: var(--wb-deep); margin-top: 3px; font-weight: 600; }
 </style>
+
+
 
 
 
@@ -1152,7 +1238,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
     </header>
 
     <nav class="scenario-bar" aria-label="Сценарии для показа">
-      <span class="scenario-label">Сценарии</span>
+      <span class="scenario-label">Показать кейс</span>
       <button class="chip" data-preset="urban"><span>🏙️</span>Городской заказ</button>
       <button class="chip" data-preset="hub"><span>🏬</span>Хаб · рост потока</button>
       <button class="chip" data-preset="trunk"><span>🛣️</span>Магистраль</button>
@@ -1165,13 +1251,37 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
     <div class="workspace">
       <aside class="side">
         <div class="tabs" role="tablist">
-          <button class="tab active" data-tab="route">Маршрут</button>
-          <button class="tab" data-tab="money">Экономика</button>
+          <button class="tab active" data-tab="logist">Пульт</button>
+          <button class="tab" data-tab="biz">Эффект</button>
+          <button class="tab" data-tab="route">Маршрут</button>
+          <button class="tab" data-tab="money">Деньги</button>
           <button class="tab" data-tab="ops">Данные</button>
         </div>
 
+        <!-- ======== TAB: пульт логиста ======== -->
+        <section class="tab-pane active" data-pane="logist">
+          <div class="card" id="logistView"></div>
+        </section>
+
+        <!-- ======== TAB: эффект для бизнеса ======== -->
+        <section class="tab-pane" data-pane="biz">
+          <div class="card biz-card">
+            <div class="biz-pitch">
+              <b>ПВЗ по пути вместо второго сортировочного центра.</b>
+              Если ПВЗ на маршруте может принять и пересортировать партию дешевле СЦ-2 — машина едет через него.
+            </div>
+            <div class="seg full roles">
+              <button class="seg-btn active" data-role="wb">Маркетплейс</button>
+              <button class="seg-btn" data-role="seller">Продавец</button>
+              <button class="seg-btn" data-role="owner">Владелец ПВЗ</button>
+              <button class="seg-btn" data-role="buyer">Покупатель</button>
+            </div>
+            <div id="businessView"></div>
+          </div>
+        </section>
+
         <!-- ======== TAB: маршрут ======== -->
-        <section class="tab-pane active" data-pane="route">
+        <section class="tab-pane" data-pane="route">
           <div class="card">
             <div class="card-head">
               <h2><span class="step">1</span>Куда везём</h2>
@@ -1251,7 +1361,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
         <section class="tab-pane" data-pane="money">
           <div class="card">
             <div class="card-head"><h2>Тарифы и ставки</h2><button class="link" id="resetTariffs" type="button">сбросить</button></div>
-            <p class="hint">Меняйте ставки — смена пересчитывается мгновенно. Это и есть финмодель MVP.</p>
+            <p class="hint">Ставки — рыночные на ноябрь 2026: «Газель» с водителем ≈ 1 100 ₽/ч, АИ-92 ≈ 72,5 ₽/л, менеджер ПВЗ 66–84 тыс. ₽/мес, логистика WB 46 ₽ + 14 ₽/л. Сортировка на СЦ-2 (25 ₽) — оценка команды. Меняйте ставки — смена пересчитывается мгновенно.</p>
             <div class="grid-2" id="tariffGrid"></div>
           </div>
 
@@ -1335,7 +1445,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
 
         <div class="kpi-strip">
           <div class="kpi"><small>Выдано</small><b id="stDelivered">0</b></div>
-          <div class="kpi accent" title="Разница остатка WB к базовой схеме по закрытым рейсам"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
+          <div class="kpi accent" title="Сумма эффекта к СЦ-2 по уже доставленным партиям"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
           <div class="kpi" title="Среднее время от выезда машины со СЦ-1 до выдачи партии в конечном ПВЗ"><small>Доставка партии</small><b id="stTime">—</b><em id="stTimeDelta"></em></div>
           <div class="kpi"><small>Доход ПВЗ-хабов</small><b class="payment-value" id="stPvzEarned">0 ₽</b></div>
           <div class="kpi"><small>Через ПВЗ / СЦ-2</small><b id="stSplit">0 / 0</b></div>
@@ -1356,7 +1466,7 @@ input[type="range"] { width: 100%; accent-color: var(--wb); height: 22px; }
           <button class="btn ghost small" id="resetSimulation" type="button" title="В начало смены">↺</button>
           <div class="timeline">
             <div class="timeline-top">
-              <span id="simClock" class="clock">Смена 0:00</span>
+              <span id="simClock" class="clock">08:00 · смена 0:00</span>
               <span class="speed">скорость
                 <select id="speedSelect"><option value="2">×2</option><option value="4" selected>×4</option><option value="10">×10</option><option value="30">×30</option></select>
               </span>
@@ -1433,12 +1543,12 @@ const CONFIG = {
   distanceShare: 0.5,       // доля километрового расхода пути к покупателю в тарифе
   buyerSavingsShare: 0.25,  // доля устранимых затрат для покупателя
   bulk: { premium: 120, hub: 50, loader: 40 },
-  hubWorkPerMin: 4,
+  hubWorkPerMin: 6,         // сотрудник ПВЗ: 66–84 тыс. ₽/мес на руки за 12-часовые смены 2/2 (hh.ru, 2026) ≈ 6 ₽/мин
   sellerGrossPerSale: 180, // условная маржа товара до логистики
 
   incidentFee: 12,
   sc1PerBox: 20,
-  sc2PerBox: 52,
+  sc2PerBox: 25,            // оценка: разгрузка, скан, сортировка, погрузка на промежуточном СЦ. Главная неопределённость модели
   scChPerBox: 25,
 
   // ПВЗ
@@ -1447,8 +1557,8 @@ const CONFIG = {
 
   // транспорт
   exitFee: 160,
-  perKm: 18,
-  perMin: 1.5,
+  perKm: 15,                // АИ-92 ≈ 72,5 ₽/л (Росстат, ноябрь 2026) × 14,5 л/100 км ≈ 10,5 ₽ + шины и ТО ≈ 4,5 ₽
+  perMin: 14,               // «Газель» с водителем ≈ 1 100 ₽/ч на рынке (Казань, 2026) без топливной части
 
   // смена
   shiftFixed: 4800,
@@ -1462,10 +1572,22 @@ const CONFIG = {
   network: { catchmentM: 400, refDensity: 1.2, fixedLoad: 15, sharedLoad: 45, maxLoadForHub: 80 },
   shelfLitres: 3000,
 
+  // Уровень «ПВЗ-хаб»: владелец выделяет отдельную зону под транзитные партии.
+  // Её литры и минуты сотрудника не зависят от потока покупателей пункта.
+  hubLevel: {
+    enabled: false,
+    litres: 1000,          // выделенная зона под транзит
+    minutesPerHour: 20,    // время сотрудника на приём и пересорт, мин в час
+    litresPerM2: 600,      // полезный объём стеллажа на 1 м² пола (высота ~2 м)
+    rentPerM2: 800,        // аренда в Йошкар-Оле: склад ≈ 350 ₽/м², помещение на 1-й линии ≈ 810 ₽/м² в месяц (Яндекс Недвижимость, 2026)
+    setupPerM2: 12000,     // стеллажи и маркировка зоны, ₽ за м² разово
+  },
+  shiftsPerMonth: 30,      // пересчёт смены в месяц: одна 8-часовая смена в день
+
 
   // продавец
-  sellerPerBox: 55,
-  storagePerBoxDay: 0.8,
+  sellerPerBox: 102,        // логистика WB для продавца: 46 ₽ за 1-й литр + 14 ₽ за каждый следующий; коробка 5 л = 102 ₽ (оферта с 23.03.2026)
+  storagePerBoxDay: 0.4,    // хранение ≈ 0,08 ₽ за литр в сутки × 5 л
   returnHandling: 150,
 };
 
@@ -152691,6 +152813,16 @@ function room(p, reservedLitres=0) {
     minutes: Math.max(0, 60 * (100-load)/100 - 2),
   };
 }
+// Ёмкость пункта как хаба. С уровнем «ПВЗ-хаб» транзит идёт в выделенную зону:
+// её литры и минуты сотрудника гарантированы и не зависят от загрузки пункта покупателями.
+const hubUpgraded = () => CONFIG.hubLevel.enabled;
+function hubRoom(p, reservedLitres=0) {
+  if (!hubUpgraded()) return room(p, reservedLitres);
+  return {litres: Math.max(0, CONFIG.hubLevel.litres - reservedLitres), minutes: CONFIG.hubLevel.minutesPerHour, dedicated: true};
+}
+function hubEligible(p, reservedLitres=0) {
+  return hubUpgraded() || calcLoadPct(p, reservedLitres) <= CONFIG.network.maxLoadForHub;
+}
 function boxFits(limits) {
   const dims=[val("dim0"),val("dim1"),val("dim2")].sort((a,b)=>b-a);
   return dims.every((x,i)=>Number.isFinite(x)&&x>0&&x<=limits[i])
@@ -152713,7 +152845,7 @@ function reservedAt(book,id,t){
   return book.reduce((sum,v)=>sum+(v.id===id && v.a<=t && t<v.b ? v.litres : 0),0);
 }
 function canReserve(p, claims, book) {
-  const shelf=room(p);
+  const shelf=hubRoom(p);
   const existing=book.filter(v=>v.id===p.id);
   for(const claim of claims){
     const overlaps=existing.filter(v=>v.a<claim.b && claim.a<v.b);
@@ -152952,9 +153084,9 @@ function choose(mode,n,t,incident,book,baselineStart=t,deadline=Infinity,days=0)
     if(r.end>deadline){reasons.add("Возврат машины после смены");continue;}
     const arrival=r.res.find(v=>v.work>0).a;
     const occupied=reservedAt(book,p.id,arrival);
-    const free=room(p,occupied).litres;
+    const free=hubRoom(p,occupied).litres;
     maxFree=Math.max(maxFree,free);
-    if(calcLoadPct(p,occupied)>CONFIG.network.maxLoadForHub){reasons.add("Загрузка выше "+CONFIG.network.maxLoadForHub+"%");continue;}
+    if(!hubEligible(p,occupied)){reasons.add("Загрузка выше "+CONFIG.network.maxLoadForHub+"%");continue;}
     if(n*volume()>free){reasons.add("Мало места");continue;}
     if(!canReserve(p,r.res,book)){reasons.add("Резерв полки или смена сотрудника заняты");continue;}
     if(slaBreach(r.eta-base.eta)){reasons.add("Превышен допуск SLA");continue;}
@@ -152963,7 +153095,11 @@ function choose(mode,n,t,incident,book,baselineStart=t,deadline=Infinity,days=0)
     if(!best || r.margin>best.margin || (r.margin===best.margin && r.end<best.end))best=r;
   }
   // A late classical round trip is still a valid price/SLA reference, but is not dispatchable.
-  if(best && (control ? best.margin>=base.margin : best.margin>=0))return best;
+  if(best && (control ? best.margin>=base.margin : best.margin>=0)){
+    // Для пульта логиста: эффект решения относительно той же партии через СЦ-2.
+    best.gain=best.margin-base.margin; best.etaGain=best.eta-base.eta; best.checked=hubPool.length;
+    return best;
+  }
   base.canWait = reasons.has("Резерв полки или смена сотрудника заняты") || (reasons.has("Мало места") && book.length>0);
   if(reasons.delete("Мало места"))reasons.add("Партия "+n+" шт. занимает "+(n*volume()).toLocaleString("ru-RU")+" л, максимум свободно "+Math.floor(maxFree).toLocaleString("ru-RU")+" л");
   base.reason = best ? "Через СЦ выгоднее для WB" : [...reasons].join(" · ") || "Нет подтверждённой дороги через доступный хаб";
@@ -153161,7 +153297,7 @@ function report() {
   const coverage=coverageFor(el("incident").value);
   if (coverage.complete < coverage.chains.length) {
     const noHybridRoad=coverageFor("none").complete === 1;
-    const eligible=hubPool.some(p => calcLoadPct(p)<=CONFIG.network.maxLoadForHub && room(p).litres>=manifest()*volume());
+    const eligible=hubPool.some(p => hubEligible(p) && hubRoom(p).litres>=manifest()*volume());
     if(noHybridRoad && eligible && fits() && (parcelCategory()!=="oversize" || el("bulkConsent").checked)){
       title="Недостаточно дорожных данных для сравнения с ПВЗ-хабом";
       reason="В обеих колонках показаны фактически доступные рейсы через СЦ. Обновите дороги для оценки альтернативы.";
@@ -153316,15 +153452,17 @@ function hubDiagnostics() {
     if (!r) continue;
     const arrival = r.res.find(v => v.work > 0)?.a ?? 0;
     const load = calcLoadPct(p, 0);
-    const shelf = room(p, 0);
+    const shelf = hubRoom(p, 0);
     const need = n * volume();
     const work = r.res.reduce((s, v) => s + v.work, 0);
     priceHybrid(r, base);
     const checks = [
       {ok: sizeOk, text: "Габариты коробки проходят в ячейку"},
       {ok: consentOk, text: "Согласие покупателя на габарит", hide: parcelCategory() !== "oversize"},
-      {ok: load <= CONFIG.network.maxLoadForHub, text: "Загрузка " + load + "% ≤ порога " + CONFIG.network.maxLoadForHub + "%"},
-      {ok: need <= shelf.litres, text: "Место на полке: нужно " + fmtInt(need) + " л, свободно " + fmtInt(shelf.litres) + " л"},
+      shelf.dedicated
+        ? {ok: true, text: "Уровень «ПВЗ-хаб»: выделенная зона не зависит от загрузки пункта (" + load + "%)"}
+        : {ok: load <= CONFIG.network.maxLoadForHub, text: "Загрузка " + load + "% ≤ порога " + CONFIG.network.maxLoadForHub + "%"},
+      {ok: need <= shelf.litres, text: (shelf.dedicated ? "Выделенная зона" : "Место на полке") + ": нужно " + fmtInt(need) + " л, свободно " + fmtInt(shelf.litres) + " л"},
       {ok: work <= shelf.minutes + 1e-9 && canReserve(p, r.res, []), text: "Сотрудник успевает: " + work.toFixed(1) + " из " + fmtInt(shelf.minutes) + " свободных мин/ч"},
       {ok: !slaBreach(r.eta - base.eta), text: "Срок: " + signMin(r.eta - base.eta) + " к базовой схеме (допуск +" + CONFIG.sla.maxExtraMin + " мин)"},
       {ok: r.pvzHub + r.pvzStorage >= hubLabour(r), text: "ПВЗ в плюсе: выплата " + fmtRub(r.pvzHub) + " ≥ труд " + fmtRub(hubLabour(r))},
@@ -153600,6 +153738,313 @@ function renderLiveTime() {
 
 </script>
 <script>
+/* Вкладка «Эффект»: для кого это, что даёт и как выглядит у каждого участника.
+ * Все числа считаются из той же смены, что и карта: одна линия доставки, одинаковый спрос и парк.
+ * Месяц = CONFIG.shiftsPerMonth смен по 8 часов. */
+let businessRole = "wb";
+const pctDelta = (b, a) => a ? (b - a) / Math.abs(a) * 100 : 0;
+const fmtPct = v => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(0) + "%";
+const perMonth = v => v * CONFIG.shiftsPerMonth;
+
+// Эффект Mesh в пик (все полки заняты на 99%) — без уровня «ПВЗ-хаб» и с ним.
+function peakResilience() {
+  const saved = {override: LOAD_OVERRIDE, level: CONFIG.hubLevel.enabled};
+  try {
+    LOAD_OVERRIDE = 99;
+    const run = level => {
+      CONFIG.hubLevel.enabled = level;
+      const d = schedule("direct"), h = schedule("hybrid");
+      const md = metrics("direct", CONFIG.shiftMinutes, d), mh = metrics("hybrid", CONFIG.shiftMinutes, h);
+      return {saved: mh.margin - md.margin, viaHub: h.trips.filter(t => t.mode === "hybrid").length, trips: h.trips.length};
+    };
+    return {without: run(false), with: run(true)};
+  } finally {
+    LOAD_OVERRIDE = saved.override;
+    CONFIG.hubLevel.enabled = saved.level;
+  }
+}
+
+function businessNumbers() {
+  if (planIssue || !runs.direct || !runs.hybrid || !previews.direct) return null;
+  const A = shiftStats("direct"), B = shiftStats("hybrid");
+  const mA = metrics("direct", CONFIG.shiftMinutes), mB = metrics("hybrid", CONFIG.shiftMinutes);
+  const tA = timeStats("direct"), tB = timeStats("hybrid");
+  const pA = previews.direct, pB = previews.hybrid || previews.direct;
+  const hubs = [...B.hubs.values()];
+  const hubCount = Math.max(1, hubs.length);
+  const pay = hubs.reduce((s, r) => s + r.pay, 0), work = hubs.reduce((s, r) => s + r.work, 0);
+  const lvl = CONFIG.hubLevel;
+  const m2 = lvl.litres / lvl.litresPerM2;
+  const owner = {
+    hubs: hubs.length,
+    boxes: perMonth(B.boxesHub) / hubCount,
+    revenue: perMonth(pay) / hubCount,
+    labour: perMonth(work) * CONFIG.hubWorkPerMin / hubCount,
+    workPerDay: work / hubCount,
+    rent: lvl.enabled ? m2 * lvl.rentPerM2 : 0,
+    setup: lvl.enabled ? m2 * lvl.setupPerM2 : 0,
+    m2,
+    peakLitres: hubs.length ? Math.max(...hubs.map(r => r.litres)) : 0,
+  };
+  owner.profit = owner.revenue - owner.labour - owner.rent;
+  owner.payback = owner.setup && owner.profit > 0 ? owner.setup / (owner.profit / 30) : null;
+  return {
+    A, B, mA, mB, tA, tB, pA, pB, owner,
+    saved: mB.margin - mA.margin,
+    cpoA: pA.costs / pA.n, cpoB: pB.costs / pB.n,
+    sellerExtra: (mB.issued - mA.issued) * (CONFIG.sellerGrossPerSale - CONFIG.sellerPerBox),
+    hubName: pB.hub ? pvzName(pB.hub) : null,
+    finalName: pvzName(cityById.get(finalPvzId)),
+  };
+}
+
+function bizTile(label, value, delta, tone = "") {
+  return h("div", {class: "biz-tile " + tone}, h("small", {}, label), h("b", {}, value), delta ? h("em", {}, delta) : null);
+}
+function bizMock(title, ...rows) {
+  return h("div", {class: "biz-mock"}, h("div", {class: "biz-mock-head"}, h("i"), h("i"), h("i"), h("span", {}, title)), h("div", {class: "biz-mock-body"}, rows));
+}
+
+const ROLES = {
+  wb: {
+    label: "Маркетплейс",
+    who: "Логистика WB в городе: СЦ, линии доставки, сеть ПВЗ.",
+    get pain() { return "Товар уже в городе, но каждая коробка едет через второй сортировочный центр: лишние " + CONFIG.sc2PerBox + " ₽ и 25 минут, а минута машины с водителем стоит " + CONFIG.perMin + " ₽."; },
+    gain: "Часть партий пересортировывают ПВЗ по пути. Те же машины везут больше заказов дешевле и быстрее.",
+    view(x) {
+      return [
+        h("div", {class: "biz-grid"},
+          bizTile("Экономия на линии", fmtRub(perMonth(x.saved)) + "/мес", signRub(x.saved) + " за смену", x.saved > 0 ? "good" : ""),
+          bizTile("Затраты на заказ", fmtRub(x.cpoB), fmtPct(pctDelta(x.cpoB, x.cpoA)) + " (было " + fmtRub(x.cpoA) + ")"),
+          bizTile("Заказов за смену на тех же машинах", x.mB.issued + "", fmtPct(pctDelta(x.mB.issued, x.mA.issued)) + " (было " + x.mA.issued + ")"),
+          bizTile("Доставка партии", x.tB.trip === null ? "—" : mins(x.tB.trip), x.tA.trip === null || x.tB.trip === null ? "" : deltaMin(x.tB.trip - x.tA.trip) + " (было " + mins(x.tA.trip) + ")")),
+        h("p", {class: "hint"}, "Нагрузка СЦ-2 снижается на " + fmtInt(perMonth(x.B.boxesHub)) + " коробок в месяц на одной линии — это мощность под рост без новых смен."),
+        bizMock("Диспетчерская WB · решение по партии",
+          h("div", {class: "mock-row"}, h("span", {}, "Партия " + x.pB.n + " шт → " + x.finalName), h("b", {class: x.pB.mode === "hybrid" ? "ok" : ""}, x.pB.mode === "hybrid" ? "через ПВЗ-хаб" : "через СЦ-2")),
+          x.hubName ? h("div", {class: "mock-row"}, h("span", {}, "Хаб"), h("b", {}, x.hubName)) : null,
+          h("div", {class: "mock-row"}, h("span", {}, "Затраты партии"), h("b", {}, fmtRub(x.pB.costs) + " вместо " + fmtRub(x.pA.costs))),
+          h("div", {class: "mock-row"}, h("span", {}, "Прибытие к покупателю"), h("b", {}, mins(x.pB.eta - x.pB.start) + " вместо " + mins(x.pA.eta - x.pA.start)))),
+      ];
+    },
+  },
+  seller: {
+    label: "Продавец",
+    who: "Продавец на WB, чьи товары уже лежат на складе в городе.",
+    pain: "Заказ ждёт второй сортировки, часть заказов не успевает выехать за день.",
+    gain: "Заказы доходят до ПВЗ быстрее, за день доставляется больше заказов, доставка для покупателя дешевле.",
+    view(x) {
+      return [
+        h("div", {class: "biz-grid"},
+          bizTile("Доп. маржа продавцов на линии", fmtRub(perMonth(x.sellerExtra)) + "/мес", "+" + (x.mB.issued - x.mA.issued) + " продаж за смену × " + (CONFIG.sellerGrossPerSale - CONFIG.sellerPerBox) + " ₽", x.sellerExtra > 0 ? "good" : ""),
+          bizTile("Срок до ПВЗ покупателя", mins(x.pB.eta - x.pB.start), deltaMin((x.pB.eta - x.pB.start) - (x.pA.eta - x.pA.start)) + " к текущей схеме"),
+          bizTile("Доставлено за день", x.mB.issued + " заказов", fmtPct(pctDelta(x.mB.issued, x.mA.issued)) + " — меньше переносов на завтра"),
+          bizTile("Цена доставки для покупателя", rub(x.pB.price), fmtPct(pctDelta(x.pB.price, x.pA.price)) + " — выше конверсия в покупку")),
+        h("p", {class: "hint"}, "Логистика продавца не дорожает: " + CONFIG.sellerPerBox + " ₽ за коробку в обеих схемах (тариф WB 46 ₽ + 14 ₽/л). Опция: хранить ходовой остаток прямо в ПВЗ-хабе рядом с покупателями — " + rub(CONFIG.storagePerBoxDay ?? 0.8) + " за коробку в сутки."),
+        bizMock("Кабинет продавца · заказ",
+          h("div", {class: "mock-row"}, h("span", {}, "Статус"), h("b", {}, x.pB.mode === "hybrid" ? "Принят в ПВЗ-хабе → едет к покупателю" : "Сортировка на СЦ-2")),
+          h("div", {class: "mock-row"}, h("span", {}, "Ожидаемая выдача"), h("b", {class: "ok"}, "через " + mins(x.pB.eta - x.pB.start) + " (было " + mins(x.pA.eta - x.pA.start) + ")")),
+          h("div", {class: "mock-row"}, h("span", {}, "Логистика"), h("b", {}, CONFIG.sellerPerBox + " ₽/шт · без изменений")),
+          h("div", {class: "mock-row"}, h("span", {}, "☐ Хранить остаток в ПВЗ-хабах"), h("b", {}, rub(CONFIG.storagePerBoxDay) + "/шт в сутки"))),
+      ];
+    },
+  },
+  owner: {
+    label: "Владелец ПВЗ",
+    who: "Владелец пункта выдачи WB. Доход сейчас — только выдача заказов.",
+    pain: "Полки и сотрудник простаивают в часы спада, доход ограничен потоком покупателей.",
+    gain: "Новый источник дохода: пункт повышает уровень до «ПВЗ-хаба» и пересортировывает транзитные партии в выделенной зоне.",
+    view(x) {
+      const o = x.owner, lvl = CONFIG.hubLevel;
+      const form = h("div", {class: "upgrade"});
+      const check = h("input", {type: "checkbox", id: "hubLevelToggle"});
+      check.checked = lvl.enabled;
+      check.addEventListener("change", () => { lvl.enabled = check.checked; updateParameters(); });
+      const range = (label, key, min, max, step, unit) => {
+        const input = h("input", {type: "range", min, max, step});
+        input.value = lvl[key];
+        const out = h("b", {}, fmtInt(lvl[key]) + unit);
+        input.addEventListener("input", () => { lvl[key] = Number(input.value); out.textContent = fmtInt(lvl[key]) + unit; });
+        input.addEventListener("change", () => updateParameters());
+        return h("label", {class: "field range"}, h("span", {}, label + " ", out), input);
+      };
+      form.append(
+        h("label", {class: "check upgrade-toggle"}, check, h("span", {}, h("b", {}, "Повысить уровень до «ПВЗ-хаб»"), h("small", {}, "выделенная зона под транзит, свой график приёма"))),
+        range("Выделенная зона", "litres", 400, 2400, 100, " л"),
+        range("Время сотрудника на хаб", "minutesPerHour", 10, 40, 5, " мин/ч"),
+      );
+      const rows = [
+        ["Коробок через хаб", fmtInt(o.boxes) + " / мес"],
+        ["Выплата WB за пересорт и хранение", fmtRub(o.revenue)],
+        ["Труд сотрудника (" + CONFIG.hubWorkPerMin + " ₽/мин)", "−" + fmtRub(o.labour)],
+        lvl.enabled ? ["Аренда зоны " + o.m2.toLocaleString("ru-RU", {maximumFractionDigits: 1}) + " м² × " + lvl.rentPerM2 + " ₽", "−" + fmtRub(o.rent)] : null,
+        ["Доп. доход пункта", fmtRub(o.profit)],
+        lvl.enabled ? ["Стеллажи и разметка (разово)", fmtRub(o.setup) + (o.payback !== null ? " · окупаемость " + Math.max(1, Math.ceil(o.payback)) + " дн." : "")] : null,
+      ].filter(Boolean);
+      const peak = x.peak;
+      return [
+        h("div", {class: "biz-grid"},
+          bizTile("Доп. доход одного хаба", fmtRub(o.profit) + "/мес", o.hubs ? "после оплаты труда" + (lvl.enabled ? " и аренды" : "") : "хаб не выбран", o.profit > 0 ? "good" : ""),
+          bizTile("Работы в день", mins(o.workPerDay), "вписано в свободное время сотрудника"),
+          bizTile("Пик занятой полки", fmtInt(o.peakLitres) + " л", lvl.enabled ? "из " + fmtInt(lvl.litres) + " л выделенной зоны" : "из свободного места пункта"),
+          bizTile("Хабов на линии", o.hubs + "", "среди ПВЗ по пути")),
+        form,
+        h("table", {class: "summary-table compact"}, h("tbody", {}, rows.map(([a, b], i) => h("tr", {class: i === rows.length - (lvl.enabled ? 2 : 1) ? "total" : ""}, h("td", {}, a), h("td", {}, b))))),
+        peak ? h("div", {class: "verdict"}, "Зачем уровень хаба: в пик, когда полки заняты на 99%, обычный ПВЗ выпадает — эффект Mesh " + signRub(peak.without.saved) + " (" + peak.without.viaHub + " партий через ПВЗ). С выделенной зоной хаб работает и в пик: " + signRub(peak.with.saved) + " (" + peak.with.viaHub + " из " + peak.with.trips + " партий).") : null,
+      ];
+    },
+  },
+  buyer: {
+    label: "Покупатель",
+    who: "Покупатель, который ждёт заказ в ПВЗ рядом с домом.",
+    pain: "Заказ уже в городе, а приходит позже из-за лишней сортировки.",
+    gain: "Заказ приезжает раньше и стоит дешевле: четверть экономии WB возвращается в цене доставки.",
+    view(x) {
+      return [
+        h("div", {class: "biz-grid"},
+          bizTile("Цена доставки", rub(x.pB.price), fmtPct(pctDelta(x.pB.price, x.pA.price)) + " (было " + rub(x.pA.price) + ")", "good"),
+          bizTile("Заказ в ПВЗ", "на " + Math.max(0, Math.round((x.pA.eta - x.pA.start) - (x.pB.eta - x.pB.start))) + " мин раньше", mins(x.pB.eta - x.pB.start) + " вместо " + mins(x.pA.eta - x.pA.start)),
+          bizTile("Гарантия срока", "до +" + CONFIG.sla.freeMinutes + " мин", "дальше компенсация " + CONFIG.sla.rubPerHour + " ₽/ч"),
+          bizTile("Габарит", "только с согласия", "+" + CONFIG.bulk.premium + " ₽ за доставку через ПВЗ")),
+        bizMock("Приложение WB · оформление",
+          h("div", {class: "mock-row"}, h("span", {}, "Пункт выдачи"), h("b", {}, x.finalName)),
+          h("div", {class: "mock-row"}, h("span", {}, "Доставка"), h("b", {class: "ok"}, rub(x.pB.price) + " · сегодня")),
+          h("div", {class: "mock-row"}, h("span", {}, "Ожидание"), h("b", {}, "≈ " + mins(x.pB.eta - x.pB.start) + " после отгрузки"))),
+      ];
+    },
+  },
+};
+
+function renderBusiness() {
+  const box = el("businessView");
+  if (!box) return;
+  for (const b of document.querySelectorAll("[data-role]")) b.classList.toggle("active", b.dataset.role === businessRole);
+  const x = businessNumbers();
+  if (!x) { box.replaceChildren(h("p", {class: "plan-message"}, planIssue || "Расчёт недоступен")); return; }
+  if (businessRole === "owner" || businessRole === "wb") x.peak = peakResilience();
+  const role = ROLES[businessRole];
+  box.replaceChildren(...[
+    h("div", {class: "biz-story"},
+      h("div", {}, h("small", {}, "Кто"), h("p", {}, role.who)),
+      h("div", {}, h("small", {}, "Боль сейчас"), h("p", {}, role.pain)),
+      h("div", {class: "gain"}, h("small", {}, "Что даёт Mesh"), h("p", {}, role.gain))),
+    ...role.view(x),
+    businessRole === "wb" && x.peak ? h("p", {class: "hint"}, "Надёжность: при перегрузке ПВЗ модель сама возвращает партии на СЦ-2 (эффект в пик " + signRub(x.peak.without.saved) + "). С уровнем «ПВЗ-хаб» эффект в пик " + signRub(x.peak.with.saved) + ".") : null,
+    h("p", {class: "hint assume"}, "Одна линия доставки: " + val("truckCountSlider") + " маш., поток " + (val("flowSlider") / 100).toLocaleString("ru-RU") + "×, партия " + manifest() + " шт. Месяц = " + CONFIG.shiftsPerMonth + " смен по 8 ч. Ставки — рыночные на ноябрь 2026 (источники в README), редактируются во вкладке «Экономика»."),
+  ].flat().filter(Boolean));
+}
+for (const b of document.querySelectorAll("[data-role]")) b.addEventListener("click", () => { businessRole = b.dataset.role; renderBusiness(); });
+
+</script>
+<script>
+/* Пульт логиста: главный экран продукта.
+ * Для кого: логист городской доставки WB (СЦ города). Для чего: по каждой партии смены
+ * система сама выбирает путь — ПВЗ-хаб по пути или СЦ-2, бронирует место и время ПВЗ
+ * и выдаёт маршрут водителю. Логист видит итог смены и подтверждает только исключения. */
+const SHIFT_START = 8 * 60; // смена 08:00–16:00
+const clockAt = m => { const t = Math.round(SHIFT_START + m); return String(Math.floor(t / 60) % 24).padStart(2, "0") + ":" + String(t % 60).padStart(2, "0"); };
+const logistDecisions = new Map(); // решения логиста по исключениям (в MVP — журнал решений)
+let logistSig = "";
+
+function tripStatus(r) {
+  if (elapsed < r.start) return {t: "Ждёт", c: "plan"};
+  if (elapsed < r.eta) return {t: "В пути", c: "go"};
+  return {t: "Выдан", c: "done"};
+}
+// Исключение — решение, которое система не подтверждает сама.
+function tripException(r) {
+  if (r.mode === "hybrid" && (r.gain ?? 0) < 100) return "выгода всего " + fmtRub(r.gain ?? 0) + " на партию";
+  if (r.mode === "hybrid" && (r.etaGain ?? 0) > 10) return "срок " + deltaMin(r.etaGain) + " к СЦ-2";
+  if (r.mode === "direct" && r.reason && !/выгоднее/.test(r.reason)) return "хаб недоступен: " + r.reason;
+  return null;
+}
+
+function renderLogist(force = false) {
+  const box = el("logistView");
+  if (!box) return;
+  const run = runs.hybrid;
+  if (planIssue || !run) { box.replaceChildren(h("p", {class: "plan-message"}, planIssue || "Расчёт недоступен")); logistSig = ""; return; }
+  const trips = run.trips;
+  const sig = trips.map(r => tripStatus(r).c).join("") + "|" + routeMode + "|" + trips.length + "|" + logistDecisions.size;
+  if (!force && sig === logistSig) return;
+  logistSig = sig;
+
+  const viaHub = trips.filter(r => r.mode === "hybrid");
+  const exceptions = trips.map((r, i) => ({r, i, why: tripException(r)})).filter(x => x.why);
+  const auto = trips.length - exceptions.length;
+  const A = runs.direct ? metrics("direct", CONFIG.shiftMinutes) : null, B = metrics("hybrid", CONFIG.shiftMinutes);
+  const saved = A ? B.margin - A.margin : 0;
+  const etaSaved = viaHub.reduce((s, r) => s - (r.etaGain ?? 0), 0);
+  const hubs = new Map();
+  for (const r of viaHub) {
+    const row = hubs.get(r.hub.id) || {p: r.hub, n: 0, boxes: 0};
+    row.n++; row.boxes += r.n; hubs.set(r.hub.id, row);
+  }
+
+  const kpi = (label, value, sub, tone = "") => h("div", {class: "lg-kpi " + tone}, h("small", {}, label), h("b", {}, value), h("em", {}, sub));
+  const rows = trips.map((r, i) => {
+    const st = tripStatus(r), ex = tripException(r), dec = logistDecisions.get(i);
+    const tr = h("tr", {class: (st.c === "go" ? "now " : "") + (ex && !dec ? "warn" : "")},
+      h("td", {}, h("b", {}, clockAt(r.start)), h("small", {}, "маш. №" + r.van + " · " + r.n + " шт")),
+      h("td", {}, r.mode === "hybrid"
+        ? h("span", {class: "lg-route hub"}, "ПВЗ-хаб", h("small", {}, pvzName(r.hub)))
+        : h("span", {class: "lg-route sc"}, "СЦ-2", h("small", {}, r.reason ? r.reason.slice(0, 38) : ""))),
+      h("td", {class: "num"}, r.mode === "hybrid" ? h("b", {class: "pos"}, signRub(r.gain ?? 0)) : "—"),
+      h("td", {}, h("span", {class: "lg-st " + st.c}, dec ? "✓ " + dec : st.t)));
+    tr.addEventListener("click", () => { setRouteMode("hybrid"); elapsed = Math.min(CONFIG.shiftMinutes, r.start + 1); updateClock(true); });
+    return tr;
+  });
+
+  // Одинаковые исключения сводим в одну карточку, чтобы логист решал одним действием.
+  const groups = new Map();
+  for (const x of exceptions) { const g = groups.get(x.why) || []; g.push(x); groups.set(x.why, g); }
+  const exList = groups.size ? [...groups.entries()].map(([why, list]) => {
+    const r = list[0].r, open = list.filter(x => !logistDecisions.has(x.i));
+    const dec = open.length ? null : logistDecisions.get(list[0].i);
+    const choose = label => { for (const x of list) logistDecisions.set(x.i, label); renderLogist(true); };
+    const btn = (text, label, cls = "") => { const b = h("button", {class: "btn small " + cls, type: "button"}, text); b.addEventListener("click", () => choose(label)); return b; };
+    const title = list.length > 1
+      ? list.length + " партий · " + list.map(x => clockAt(x.r.start)).slice(0, 4).join(", ") + (list.length > 4 ? "…" : "")
+      : clockAt(r.start) + " · машина №" + r.van + " · " + r.n + " шт";
+    const tip = /Загрузка выше/.test(why) ? "Совет: подключите ПВЗ с уровнем «хаб» — выделенная зона работает и в пик (вкладка «Эффект» → «Владелец ПВЗ»)." : null;
+    return h("div", {class: "lg-ex" + (dec ? " done" : "")},
+      h("div", {}, h("b", {}, title),
+        h("small", {}, "Система предлагает: " + (r.mode === "hybrid" ? "через " + pvzName(r.hub) : "через СЦ-2") + " — " + why),
+        tip ? h("small", {class: "tip"}, tip) : null),
+      dec ? h("span", {class: "lg-st done"}, "✓ " + dec) : h("div", {class: "lg-ex-btns"},
+        btn(list.length > 1 ? "Подтвердить все" : "Подтвердить", "подтверждено", "primary"),
+        btn(r.mode === "hybrid" ? "Через СЦ-2" : "Ждать хаб", r.mode === "hybrid" ? "через СЦ-2" : "ждём хаб")));
+  }) : [h("p", {class: "lg-ok"}, "✓ Исключений нет — все партии смены решены автоматически")];
+
+  box.replaceChildren(
+    h("div", {class: "lg-head"},
+      h("small", {}, "Пульт логиста · городская доставка WB · " + (REGION_CATALOGS[regionId]?.city || "Йошкар-Ола")),
+      h("b", {}, "Смена 08:00–16:00 · сейчас " + clockAt(elapsed)),
+      h("p", {}, "Система сама решает по каждой партии: через ПВЗ-хаб по пути или через СЦ-2. Вы подтверждаете только исключения.")),
+    h("div", {class: "lg-kpis"},
+      kpi("Решено автоматически", auto + " из " + trips.length, "партий смены", "good"),
+      kpi("Через ПВЗ-хабы", viaHub.length + " партий", viaHub.reduce((s, r) => s + r.n, 0) + " коробок мимо СЦ-2"),
+      kpi("Экономия смены", signRub(saved), etaSaved > 0.5 ? "−" + Math.round(etaSaved) + " мин в пути у партий" : "без изменения сроков")),
+    h("h4", {class: "lg-title"}, "Нужно ваше решение", h("span", {class: "pill-count"}, String(exceptions.filter(x => !logistDecisions.has(x.i)).length))),
+    ...exList,
+    h("h4", {class: "lg-title"}, "Партии смены", h("small", {}, "нажмите строку — покажу на карте")),
+    h("div", {class: "lg-table-wrap"}, h("table", {class: "lg-table"},
+      h("thead", {}, h("tr", {}, ["Отправка", "Путь партии", "Эффект", "Статус"].map(t => h("th", {}, t)))),
+      h("tbody", {}, rows))),
+    hubs.size ? h("div", {}, h("h4", {class: "lg-title"}, "ПВЗ-хабы сегодня"),
+      ...[...hubs.values()].map(x => h("div", {class: "lg-hub"}, h("span", {}, pvzName(x.p)), h("b", {}, x.n + " партий · " + x.boxes + " шт"), h("small", {}, "задание и время приёма отправлены в ПВЗ")))) : null,
+    h("details", {class: "lg-auto"}, h("summary", {}, "Что система делает сама, а что — логист"),
+      h("ul", {},
+        ["Подбирает ПВЗ-хаб по пути: габарит, место, время сотрудника, срок, выгода",
+         "Бронирует полку и время сотрудника хаба, отправляет ПВЗ задание на приём",
+         "Строит маршрут водителю по улицам и ставит рейс в очередь машины",
+         "При перегрузке хабов сама возвращает партии на СЦ-2 или сдвигает отправку на 15–30 мин",
+         "Считает эффект: деньги, время, пробег — по каждой партии и за смену"].map(t => h("li", {}, "✓ " + t)),
+        h("li", {class: "manual"}, "Логист: подтверждает исключения (малая выгода, задержка срока, хаб недоступен), меняет тарифы и пороги, подключает новые ПВЗ-хабы"))),
+  );
+}
+
+</script>
+<script>
 function renderOpeningLot(){
   const lot=runs[routeMode]?.trips[0]?.openingLot;
   el("storedLot").hidden=!val("storageDays");
@@ -153668,10 +154113,12 @@ function updateClock(force=false) {
     classic = metrics("direct", elapsed);
   el("stDelivered").textContent = m.issued;
   el("stActiveTrucks").textContent = current.length;
-  el("stMpSaved").textContent = rub(m.margin - classic.margin);
+  // Экономия по уже доставленным партиям: сумма эффекта каждой партии к СЦ-2 (растёт по ходу смены).
+  el("stMpSaved").textContent = routeMode === "hybrid"
+    ? fmtRub(runs.hybrid.trips.reduce((s, r) => s + (r.mode === "hybrid" && r.eta <= elapsed ? (r.gain ?? 0) : 0), 0))
+    : "0 ₽";
   el("stPvzEarned").textContent = rub(m.pvzHub + m.pvzStorage);
-  el("simClock").textContent =
-    "Смена " +
+  el("simClock").textContent = clockAt(Math.floor(elapsed)) + " · смена " +
     Math.floor(elapsed / 60) +
     ":" +
     String(Math.floor(elapsed % 60)).padStart(2, "0");
@@ -153694,6 +154141,7 @@ function updateClock(force=false) {
   renderOpeningLot();
   renderLiveExtras();
   renderLiveTime();
+  renderLogist();
   el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {
@@ -153770,7 +154218,7 @@ function setUnavailable(message){
   el("truckLegStatus").textContent="Ожидание расчёта";
   el("liveLog").textContent="";el("chainExplanation").textContent=message;
   el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
-  el("storedLot").hidden=true;renderDecision();el("stTimeDelta").textContent="";el("mDirectMin").textContent="";el("mHybridMin").textContent="";el("stSplit").textContent="—";
+  el("storedLot").hidden=true;renderDecision();renderBusiness();renderLogist(true);el("stTimeDelta").textContent="";el("mDirectMin").textContent="";el("mHybridMin").textContent="";el("stSplit").textContent="—";
   trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
@@ -153847,6 +154295,8 @@ function recalculateAll(){
   updateClock(true);
   renderDecision();
   renderFormulas();
+  renderBusiness();
+  logistDecisions.clear();renderLogist(true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
 }

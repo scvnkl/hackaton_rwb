@@ -29,9 +29,9 @@ function choose(mode,n,t,incident,book,baselineStart=t,deadline=Infinity,days=0)
     if(r.end>deadline){reasons.add("Возврат машины после смены");continue;}
     const arrival=r.res.find(v=>v.work>0).a;
     const occupied=reservedAt(book,p.id,arrival);
-    const free=room(p,occupied).litres;
+    const free=hubRoom(p,occupied).litres;
     maxFree=Math.max(maxFree,free);
-    if(calcLoadPct(p,occupied)>CONFIG.network.maxLoadForHub){reasons.add("Загрузка выше "+CONFIG.network.maxLoadForHub+"%");continue;}
+    if(!hubEligible(p,occupied)){reasons.add("Загрузка выше "+CONFIG.network.maxLoadForHub+"%");continue;}
     if(n*volume()>free){reasons.add("Мало места");continue;}
     if(!canReserve(p,r.res,book)){reasons.add("Резерв полки или смена сотрудника заняты");continue;}
     if(slaBreach(r.eta-base.eta)){reasons.add("Превышен допуск SLA");continue;}
@@ -40,7 +40,11 @@ function choose(mode,n,t,incident,book,baselineStart=t,deadline=Infinity,days=0)
     if(!best || r.margin>best.margin || (r.margin===best.margin && r.end<best.end))best=r;
   }
   // A late classical round trip is still a valid price/SLA reference, but is not dispatchable.
-  if(best && (control ? best.margin>=base.margin : best.margin>=0))return best;
+  if(best && (control ? best.margin>=base.margin : best.margin>=0)){
+    // Для пульта логиста: эффект решения относительно той же партии через СЦ-2.
+    best.gain=best.margin-base.margin; best.etaGain=best.eta-base.eta; best.checked=hubPool.length;
+    return best;
+  }
   base.canWait = reasons.has("Резерв полки или смена сотрудника заняты") || (reasons.has("Мало места") && book.length>0);
   if(reasons.delete("Мало места"))reasons.add("Партия "+n+" шт. занимает "+(n*volume()).toLocaleString("ru-RU")+" л, максимум свободно "+Math.floor(maxFree).toLocaleString("ru-RU")+" л");
   base.reason = best ? "Через СЦ выгоднее для WB" : [...reasons].join(" · ") || "Нет подтверждённой дороги через доступный хаб";

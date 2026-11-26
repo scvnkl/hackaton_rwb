@@ -97,7 +97,7 @@ function report() {
   const coverage=coverageFor(el("incident").value);
   if (coverage.complete < coverage.chains.length) {
     const noHybridRoad=coverageFor("none").complete === 1;
-    const eligible=hubPool.some(p => calcLoadPct(p)<=CONFIG.network.maxLoadForHub && room(p).litres>=manifest()*volume());
+    const eligible=hubPool.some(p => hubEligible(p) && hubRoom(p).litres>=manifest()*volume());
     if(noHybridRoad && eligible && fits() && (parcelCategory()!=="oversize" || el("bulkConsent").checked)){
       title="Недостаточно дорожных данных для сравнения с ПВЗ-хабом";
       reason="В обеих колонках показаны фактически доступные рейсы через СЦ. Обновите дороги для оценки альтернативы.";

@@ -68,15 +68,17 @@ function hubDiagnostics() {
     if (!r) continue;
     const arrival = r.res.find(v => v.work > 0)?.a ?? 0;
     const load = calcLoadPct(p, 0);
-    const shelf = room(p, 0);
+    const shelf = hubRoom(p, 0);
     const need = n * volume();
     const work = r.res.reduce((s, v) => s + v.work, 0);
     priceHybrid(r, base);
     const checks = [
       {ok: sizeOk, text: "Габариты коробки проходят в ячейку"},
       {ok: consentOk, text: "Согласие покупателя на габарит", hide: parcelCategory() !== "oversize"},
-      {ok: load <= CONFIG.network.maxLoadForHub, text: "Загрузка " + load + "% ≤ порога " + CONFIG.network.maxLoadForHub + "%"},
-      {ok: need <= shelf.litres, text: "Место на полке: нужно " + fmtInt(need) + " л, свободно " + fmtInt(shelf.litres) + " л"},
+      shelf.dedicated
+        ? {ok: true, text: "Уровень «ПВЗ-хаб»: выделенная зона не зависит от загрузки пункта (" + load + "%)"}
+        : {ok: load <= CONFIG.network.maxLoadForHub, text: "Загрузка " + load + "% ≤ порога " + CONFIG.network.maxLoadForHub + "%"},
+      {ok: need <= shelf.litres, text: (shelf.dedicated ? "Выделенная зона" : "Место на полке") + ": нужно " + fmtInt(need) + " л, свободно " + fmtInt(shelf.litres) + " л"},
       {ok: work <= shelf.minutes + 1e-9 && canReserve(p, r.res, []), text: "Сотрудник успевает: " + work.toFixed(1) + " из " + fmtInt(shelf.minutes) + " свободных мин/ч"},
       {ok: !slaBreach(r.eta - base.eta), text: "Срок: " + signMin(r.eta - base.eta) + " к базовой схеме (допуск +" + CONFIG.sla.maxExtraMin + " мин)"},
       {ok: r.pvzHub + r.pvzStorage >= hubLabour(r), text: "ПВЗ в плюсе: выплата " + fmtRub(r.pvzHub) + " ≥ труд " + fmtRub(hubLabour(r))},

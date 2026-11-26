@@ -38,7 +38,7 @@ function setUnavailable(message){
   el("truckLegStatus").textContent="Ожидание расчёта";
   el("liveLog").textContent="";el("chainExplanation").textContent=message;
   el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
-  el("storedLot").hidden=true;renderDecision();el("stTimeDelta").textContent="";el("mDirectMin").textContent="";el("mHybridMin").textContent="";el("stSplit").textContent="—";
+  el("storedLot").hidden=true;renderDecision();renderBusiness();renderLogist(true);el("stTimeDelta").textContent="";el("mDirectMin").textContent="";el("mHybridMin").textContent="";el("stSplit").textContent="—";
   trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
@@ -115,6 +115,8 @@ function recalculateAll(){
   updateClock(true);
   renderDecision();
   renderFormulas();
+  renderBusiness();
+  logistDecisions.clear();renderLogist(true);
   if(drawerOpen)renderAnalyticsDrawer();
   if(el("summaryModal").classList.contains("open"))openSummaryModal();
 }

@@ -4,6 +4,8 @@ const fs = require("node:fs");
 const path = require("node:path");
 const vm = require("node:vm");
 
+// Регрессионные тесты ниже закреплены на учебных ставках v12; реальные ставки проверяются отдельно.
+const LEGACY_RATES = 'Object.assign(CONFIG,{hubWorkPerMin:4,sc2PerBox:52,perKm:18,perMin:1.5,sellerPerBox:55,storagePerBoxDay:0.8}); CONFIG.hubLevel.rentPerM2=900;';
 function pilot(region = "yoshkar-ola") {
   const controls = Object.fromEntries(Object.entries({
     batch:20, dim0:25, dim1:20, dim2:10, kg:2, storageDays:0, flowSlider:100, shelfSlider:100,
@@ -41,7 +43,7 @@ test("четыре стартовые зоны имеют полный авто�
 });
 
 test("контроль и гибрид разделяют спрос и возвращают одинаковый бюджет при перегрузке", () => {
-  const {run,controls} = pilot();
+  const {run,controls} = pilot(); run(LEGACY_RATES);
   run('runs={direct:schedule("direct"),hybrid:schedule("hybrid")}');
   assert.equal(run('runs.direct.demand'),run('runs.hybrid.demand'));
   assert.ok(run('issuedP95(runs.direct)') > 0);
@@ -105,7 +107,7 @@ test("плотность соседей определяет фон, досту�
 });
 
 test("обычные и повёрнутые вручную введённые коробки соблюдают тариф, вместимость и согласие", () => {
-  const {run,controls} = pilot();
+  const {run,controls} = pilot(); run(LEGACY_RATES);
   for(const sides of [[90,45,40,18],[40,90,45,18]]){
     sides.forEach((v,i)=>controls[i===3?"kg":"dim"+i].value=v);
     assert.equal(run("parcelCategory()"),"oversize");
@@ -125,7 +127,7 @@ test("обычные и повёрнутые вручную введённые �
 });
 
 test("проверка конца смены учитывает альтернативу на бульваре Ураева", () => {
-  const {run,controls} = pilot();
+  const {run,controls} = pilot(); run(LEGACY_RATES);
   controls.flowSlider.value=200;
   controls.batch.value=50;
   controls.truckCountSlider.value=2;
@@ -141,7 +143,7 @@ test("проверка конца смены учитывает альтерна
 });
 
 test("пять суток занимают полку до погрузки, оплата хабу учтена один раз", () => {
-  const {run,controls} = pilot();
+  const {run,controls} = pilot(); run(LEGACY_RATES);
   controls.batch.value=10;
   controls.flowSlider.value=70;
   controls.shelfSlider.value=50;
@@ -203,4 +205,24 @@ test("проверка точек отклоняет конфликт с дру�
   assert.throws(()=>run('validateCatalog({city:"Тест",points:[ozon]})'),/WB/);
   assert.equal(run('PVZ_LIST.length===before && cityById.has(finalPvzId)'),true);
   assert.equal(run('validateCatalog({city:"Тест",points:[wb,{...ozon,id:"y"}]}).points.length'),2);
+});
+
+test("уровень «ПВЗ-хаб»: выделенная зона держит Mesh в пик, без неё партии уходят на СЦ-2", () => {
+  const {run} = pilot();
+  run('LOAD_OVERRIDE=99; CONFIG.hubLevel.enabled=false;');
+  assert.equal(run('schedule("hybrid").trips.filter(t=>t.mode==="hybrid").length'), 0);
+  run('CONFIG.hubLevel.enabled=true;');
+  const via = run('schedule("hybrid").trips.filter(t=>t.mode==="hybrid").length');
+  assert.ok(via > 0);
+  const gain = run('metrics("hybrid",480,schedule("hybrid")).margin - metrics("direct",480,schedule("direct")).margin');
+  assert.ok(gain > 0, String(gain));
+  // Зона меньше партии — хаб не принимает.
+  run('CONFIG.hubLevel.litres=10;');
+  assert.equal(run('schedule("hybrid").trips.filter(t=>t.mode==="hybrid").length'), 0);
+});
+
+test("реальные ставки 2026: Mesh остаётся выгодным на стартовой линии", () => {
+  const {run} = pilot();
+  const gain = run('metrics("hybrid",480,schedule("hybrid")).margin - metrics("direct",480,schedule("direct")).margin');
+  assert.ok(gain > 0, String(gain));
 });

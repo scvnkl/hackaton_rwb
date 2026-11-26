@@ -35,6 +35,8 @@
     <script defer src="src/model/shift.js"></script>
     <script defer src="src/ui/reports.js"></script>
     <script defer src="src/ui/insights.js"></script>
+    <script defer src="src/ui/business.js"></script>
+    <script defer src="src/ui/logist.js"></script>
     <script defer src="src/ui/playback.js"></script>
     <script defer src="src/ui/controls.js"></script>
     <script defer src="src/main.js"></script>
@@ -66,7 +68,7 @@
     </header>
 
     <nav class="scenario-bar" aria-label="Сценарии для показа">
-      <span class="scenario-label">Сценарии</span>
+      <span class="scenario-label">Показать кейс</span>
       <button class="chip" data-preset="urban"><span>🏙️</span>Городской заказ</button>
       <button class="chip" data-preset="hub"><span>🏬</span>Хаб · рост потока</button>
       <button class="chip" data-preset="trunk"><span>🛣️</span>Магистраль</button>
@@ -79,13 +81,37 @@
     <div class="workspace">
       <aside class="side">
         <div class="tabs" role="tablist">
-          <button class="tab active" data-tab="route">Маршрут</button>
-          <button class="tab" data-tab="money">Экономика</button>
+          <button class="tab active" data-tab="logist">Пульт</button>
+          <button class="tab" data-tab="biz">Эффект</button>
+          <button class="tab" data-tab="route">Маршрут</button>
+          <button class="tab" data-tab="money">Деньги</button>
           <button class="tab" data-tab="ops">Данные</button>
         </div>
 
+        <!-- ======== TAB: пульт логиста ======== -->
+        <section class="tab-pane active" data-pane="logist">
+          <div class="card" id="logistView"></div>
+        </section>
+
+        <!-- ======== TAB: эффект для бизнеса ======== -->
+        <section class="tab-pane" data-pane="biz">
+          <div class="card biz-card">
+            <div class="biz-pitch">
+              <b>ПВЗ по пути вместо второго сортировочного центра.</b>
+              Если ПВЗ на маршруте может принять и пересортировать партию дешевле СЦ-2 — машина едет через него.
+            </div>
+            <div class="seg full roles">
+              <button class="seg-btn active" data-role="wb">Маркетплейс</button>
+              <button class="seg-btn" data-role="seller">Продавец</button>
+              <button class="seg-btn" data-role="owner">Владелец ПВЗ</button>
+              <button class="seg-btn" data-role="buyer">Покупатель</button>
+            </div>
+            <div id="businessView"></div>
+          </div>
+        </section>
+
         <!-- ======== TAB: маршрут ======== -->
-        <section class="tab-pane active" data-pane="route">
+        <section class="tab-pane" data-pane="route">
           <div class="card">
             <div class="card-head">
               <h2><span class="step">1</span>Куда везём</h2>
@@ -165,7 +191,7 @@
         <section class="tab-pane" data-pane="money">
           <div class="card">
             <div class="card-head"><h2>Тарифы и ставки</h2><button class="link" id="resetTariffs" type="button">сбросить</button></div>
-            <p class="hint">Меняйте ставки — смена пересчитывается мгновенно. Это и есть финмодель MVP.</p>
+            <p class="hint">Ставки — рыночные на ноябрь 2026: «Газель» с водителем ≈ 1 100 ₽/ч, АИ-92 ≈ 72,5 ₽/л, менеджер ПВЗ 66–84 тыс. ₽/мес, логистика WB 46 ₽ + 14 ₽/л. Сортировка на СЦ-2 (25 ₽) — оценка команды. Меняйте ставки — смена пересчитывается мгновенно.</p>
             <div class="grid-2" id="tariffGrid"></div>
           </div>
 
@@ -249,7 +275,7 @@
 
         <div class="kpi-strip">
           <div class="kpi"><small>Выдано</small><b id="stDelivered">0</b></div>
-          <div class="kpi accent" title="Разница остатка WB к базовой схеме по закрытым рейсам"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
+          <div class="kpi accent" title="Сумма эффекта к СЦ-2 по уже доставленным партиям"><small>Экономия WB</small><b class="savings-value" id="stMpSaved">0 ₽</b></div>
           <div class="kpi" title="Среднее время от выезда машины со СЦ-1 до выдачи партии в конечном ПВЗ"><small>Доставка партии</small><b id="stTime">—</b><em id="stTimeDelta"></em></div>
           <div class="kpi"><small>Доход ПВЗ-хабов</small><b class="payment-value" id="stPvzEarned">0 ₽</b></div>
           <div class="kpi"><small>Через ПВЗ / СЦ-2</small><b id="stSplit">0 / 0</b></div>
@@ -270,7 +296,7 @@
           <button class="btn ghost small" id="resetSimulation" type="button" title="В начало смены">↺</button>
           <div class="timeline">
             <div class="timeline-top">
-              <span id="simClock" class="clock">Смена 0:00</span>
+              <span id="simClock" class="clock">08:00 · смена 0:00</span>
               <span class="speed">скорость
                 <select id="speedSelect"><option value="2">×2</option><option value="4" selected>×4</option><option value="10">×10</option><option value="30">×30</option></select>
               </span>

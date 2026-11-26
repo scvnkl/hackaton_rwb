@@ -11,6 +11,8 @@ async function check(page, url) {
   await page.goto(url);
   // Вкладки боковой панели: в тесте показываем все панели сразу.
   await page.addStyleTag({content:".tab-pane{display:block!important}"});
+  // Регрессии закреплены на учебных ставках v12 (реальные ставки проверяет dispatch.test.cjs).
+  await page.evaluate(()=>{Object.assign(CONFIG,{hubWorkPerMin:4,sc2PerBox:52,perKm:18,perMin:1.5,sellerPerBox:55,storagePerBoxDay:0.8});CONFIG.hubLevel.rentPerM2=900;updateParameters();});
   const get = id => page.locator("#" + id);
   const read = async id => (await get(id).textContent()).replace(/\s+/g," ").trim();
   const preset = name => page.locator('[data-preset="'+name+'"]').click();
@@ -54,7 +56,7 @@ async function check(page, url) {
   assert.match(await read("chainExplanation"),/Машина 1.*Машина 2/);
   await range("scrub",180);
   await get("optDirect").click();
-  assert.equal(await read("simClock"),"Смена 3:00");
+  assert.equal(await read("simClock"),"11:00 · смена 3:00");
   await get("optHybrid").click();
   assert.equal(await get("scrub").inputValue(),"180");
   await get("btnToggleSim").click();

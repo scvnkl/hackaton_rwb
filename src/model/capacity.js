@@ -16,6 +16,16 @@ function room(p, reservedLitres=0) {
     minutes: Math.max(0, 60 * (100-load)/100 - 2),
   };
 }
+// Ёмкость пункта как хаба. С уровнем «ПВЗ-хаб» транзит идёт в выделенную зону:
+// её литры и минуты сотрудника гарантированы и не зависят от загрузки пункта покупателями.
+const hubUpgraded = () => CONFIG.hubLevel.enabled;
+function hubRoom(p, reservedLitres=0) {
+  if (!hubUpgraded()) return room(p, reservedLitres);
+  return {litres: Math.max(0, CONFIG.hubLevel.litres - reservedLitres), minutes: CONFIG.hubLevel.minutesPerHour, dedicated: true};
+}
+function hubEligible(p, reservedLitres=0) {
+  return hubUpgraded() || calcLoadPct(p, reservedLitres) <= CONFIG.network.maxLoadForHub;
+}
 function boxFits(limits) {
   const dims=[val("dim0"),val("dim1"),val("dim2")].sort((a,b)=>b-a);
   return dims.every((x,i)=>Number.isFinite(x)&&x>0&&x<=limits[i])
@@ -38,7 +48,7 @@ function reservedAt(book,id,t){
   return book.reduce((sum,v)=>sum+(v.id===id && v.a<=t && t<v.b ? v.litres : 0),0);
 }
 function canReserve(p, claims, book) {
-  const shelf=room(p);
+  const shelf=hubRoom(p);
   const existing=book.filter(v=>v.id===p.id);
   for(const claim of claims){
     const overlaps=existing.filter(v=>v.a<claim.b && claim.a<v.b);
