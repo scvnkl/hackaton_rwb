@@ -727,6 +727,11 @@ input[type="range"] {
   margin: 12px 0;
   font-size: 12px;
 }
+[hidden] { display:none !important; }
+.plan-message, .lot-panel { padding:9px 12px; border-left:3px solid var(--wb-dark); background:#f6f2fa; }
+.plan-message {font-size:12px;}
+button:disabled, input:disabled {opacity:.6;cursor:default}
+.chain-banner {white-space:pre-line}
 .preset-row {
   display: flex;
   flex-wrap: wrap;

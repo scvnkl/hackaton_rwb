@@ -31,7 +31,9 @@ const CONFIG = {
   sla: { freeMinutes: 20, rubPerHour: 25, maxExtraMin: 90 },
 
   // сеть ПВЗ
-  network: { catchmentM: 400, refDensity: 1.2, maxAdj: 12, maxLoadForHub: 80 },
+  // При равном районном спросе соседние пункты делят переменную часть нагрузки.
+  network: { catchmentM: 400, refDensity: 1.2, fixedLoad: 15, sharedLoad: 45, maxLoadForHub: 80 },
+  shelfLitres: 3000,
 
 
   // продавец

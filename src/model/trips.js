@@ -1,20 +1,24 @@
-function chain(mode, hub) {
+function chain(mode, hub, destination=finalPvzId) {
   let ids = ["sc-1"];
   if (mode === "direct") ids.push("sc-2");
   if (geoMode === "intercity") ids.push("sc-ch");
   if (hub) ids.push(hub.id);
-  ids.push(finalPvzId);
+  ids.push(destination);
   return ids;
 }
+function roadItinerary(ids,incident) {
+  return incident==="error" ? [...ids, ids.at(-2), ids.at(-1), "sc-1"] : [...ids,"sc-1"];
+}
+function hasItinerary(ids){return ids.slice(1).every((id,i)=>legOf(ids[i],id));}
 function customerTariff(km, n) {
-  return CONFIG.buyerBase[parcelSize] + (geoMode === "intercity" ? CONFIG.intercityFee : 0)
+  return CONFIG.buyerBase[parcelCategory()] + (geoMode === "intercity" ? CONFIG.intercityFee : 0)
     + Math.round(CONFIG.distanceShare * CONFIG.perKm * km / n);
 }
 function tariffLabel(mode) {
   const r = previews[mode];
   return r ? rub(r.price) : "—";
 }
-function trip(mode, hub, n, start, incident) {
+function trip(mode, hub, n, start, incident, days=0) {
   const ids = chain(mode, hub),
     phases = [],
     scans = [],
@@ -28,10 +32,9 @@ function trip(mode, hub, n, start, incident) {
     returned = 0,
     hubPay = 0;
   if (!ids.every((id) => nodeLatLng(id))) return null;
-  const required = ids.slice(1).map((b,i) => [ids[i], b]);
-  required.push([ids.at(-1), "sc-1"]);
-  if (incident === "error") required.push([ids.at(-1), ids.at(-2)]);
-  if (required.some(([a,b]) => !legOf(a,b))) return null;
+  if (!hasItinerary(roadItinerary(ids,incident))) return null;
+  const storageSite=days>0?(hub?.id||"sc-2"):null;
+  let pickup,openingLot;
   const charge = (label, price) => (rows[label] = (rows[label] || 0) + price);
   const scan = (id, text, delta = 0, back = 0) => {
     scans.push({ t, id, text, delta, back });
@@ -57,12 +60,18 @@ function trip(mode, hub, n, start, incident) {
     t += duration;
     km += leg.km;
   }
-  stop(ids[0], 25, "Приём и погрузка в СЦ 1");
-  charge("СЦ 1 · обработка", CONFIG.sc1PerBox * n);
-  scan(ids[0], "Передано водителю: " + n);
+  if(storageSite){
+    stop(ids[0],5,"Подготовка машины к забору запаса");
+    scan(ids[0],"Выезд за партией со склада");
+  }else{
+    stop(ids[0],25,"Приём и погрузка в СЦ 1");
+    charge("СЦ 1 · обработка", CONFIG.sc1PerBox*n);
+    scan(ids[0],"Передано водителю: "+n);
+  }
   for (let i = 1; i < ids.length; i++) {
     const id = ids[i];
     drive(ids[i - 1], id);
+    if(id===storageSite)pickup=t;
     if (i === ids.length - 1) {
       eta = t;
       outKm = km;
@@ -72,10 +81,10 @@ function trip(mode, hub, n, start, incident) {
     } else if (id === hub?.id) {
       let arrival = t,
         duration = 3 + n * 0.4;
-      stop(id, duration, "Приёмка, резерв полки и пересортировка");
+      stop(id, duration, storageSite ? "Отбор запаса, сканирование и погрузка" : "Приёмка, резерв полки и пересортировка");
       res.push({ id, a: arrival, b: t, litres: n * volume(), work: duration });
-      let fee = CONFIG.hubPerBox[parcelSize];
-      if (parcelSize === "oversize") {
+      let fee = CONFIG.hubPerBox[parcelCategory()];
+      if (parcelCategory() === "oversize") {
         charge("Габарит · выплата ПВЗ", CONFIG.bulk.hub * n);
         charge("Габарит · грузчики", CONFIG.bulk.loader * n);
         hubPay += CONFIG.bulk.hub * n;
@@ -83,8 +92,8 @@ function trip(mode, hub, n, start, incident) {
       hubPay += fee * n;
       charge("ПВЗ-хаб · обработка", fee * n);
       scan(id, "Принято и передано: " + n);
-    } else {
-      stop(id, 25, "Сортировка " + nodeName(id));
+    } else if(!storageSite || pickup!==undefined) {
+      stop(id, 25, id===storageSite ? "Отбор партии в СЦ со хранения" : "Сортировка " + nodeName(id));
       charge(
         id === "sc-2"
           ? "СЦ 2 · устранимые операции"
@@ -92,6 +101,12 @@ function trip(mode, hub, n, start, incident) {
         (id === "sc-2" ? CONFIG.sc2PerBox : CONFIG.scChPerBox) * n,
       );
       scan(id, "Отсканировано " + n);
+    }
+    if(id===storageSite){
+      const fee=CONFIG.storagePerBoxDay*n*days;
+      openingLot={id,units:n,litres:n*volume(),days,fee,receivedAt:-days*1440,releasedAt:t,pickup};
+      if(hub)res.unshift({id,a:openingLot.receivedAt,b:pickup,litres:openingLot.litres,work:0});
+      scan(id,"Списано с хранения и погружено: "+n+" шт.");
     }
   }
   let final = ids.at(-1),
@@ -131,10 +146,10 @@ function trip(mode, hub, n, start, incident) {
     CONFIG.finalPvzPerBox * n +
     (incident === "return" ? CONFIG.incidentFee : 0);
   const logistics = CONFIG.sellerPerBox * n,
-    storage = CONFIG.storagePerBoxDay * n * val("storageDays"),
+    storage = openingLot?.fee || 0,
     returns = incident === "return" ? CONFIG.returnHandling : 0;
   return {
-    eta,
+    eta, openingLot, pvzStorage: hub && openingLot ? storage : 0,
     referencePrice: price,
     discount: 0,
     premium: 0,
@@ -165,7 +180,7 @@ function trip(mode, hub, n, start, incident) {
     costs,
     income,
     margin: income - costs,
-    pvz: hubPay + pvzBase,
+    pvz: hubPay + pvzBase + (hub ? storage : 0),
     hub,
   };
 }

@@ -4,19 +4,19 @@ let regionId = "yoshkar-ola";
 let networkPoints = [];
 let cityById = new Map();
 let hubPool = [];
-let neighborhood;
+let savedDestinations = new Set();
 let roadGeneration = 0;
+let catalogGeneration = 0;
 const regionStock = new Map();
 
 function samePlace(a, b) {
   return a.brand === b.brand && haversineM(a.latlng, b.latlng) <= 30;
 }
 
-function setNetwork(key) {
-  const catalog = REGION_CATALOGS[key];
+function prepareNetwork(key, catalog) {
   const original = pilotPoints.filter(p => ["yoshkar-ola","cheboksary"].includes(key) && p.city === catalog.city)
-    .map(p => ({...p, brand: "wb"}));
-  networkPoints = original.slice();
+    .map(p => ({...p, brand: "wb", origin:"Пилот v12"}));
+  const points = original.slice();
   const ids = new Set(original.map(p => p.id));
   const grid = new Map();
   const cell = ([lat, lon]) => [Math.floor(lat * 400), Math.floor(lon * 200)];
@@ -35,13 +35,23 @@ function setNetwork(key) {
   }
   original.forEach(index);
   for (const row of catalog.points) {
-    const p = {...row, city: catalog.city};
+    const archive = ["yoshkar-ola","cheboksary"].includes(key);
+    const origin = archive && row.id.startsWith("wildberries-") ? "Пункты выдачи · архив Mesh Atlas" :
+      catalog.source || "OpenStreetMap · ODbL";
+    const p = {...row, city: catalog.city, origin};
     if (ids.has(p.id) || nearby(p.latlng).some(other => samePlace(p, other))) continue;
     ids.add(p.id);
-    networkPoints.push(p);
+    points.push(p);
     index(p);
   }
-  PVZ_LIST.splice(0, PVZ_LIST.length, ...networkPoints.filter(p => p.brand === "wb"));
+  const wb=points.filter(p=>p.brand==="wb");
+  if(!wb.length)throw Error("После объединения в справочнике нет ни одного ПВЗ Wildberries.");
+  return {points,wb};
+}
+
+function setNetwork(key, prepared=prepareNetwork(key,REGION_CATALOGS[key])){
+  networkPoints=prepared.points;
+  PVZ_LIST.splice(0,PVZ_LIST.length,...prepared.wb);
   cityById = new Map(PVZ_LIST.map(p => [p.id, p]));
   rebuildDensity(networkPoints);
 }
@@ -59,16 +69,23 @@ function candidatePoints() {
   return base;
 }
 
-function configureRegion(key) {
+function configureRegion(key, catalog=REGION_CATALOGS[key]) {
+  // Prepare and validate before changing a single field of the displayed region.
+  const prepared=prepareNetwork(key,catalog);
+  ++catalogGeneration;
   citySearch?.abort();
-  const catalog = REGION_CATALOGS[key];
+  el("importStatus").textContent = "";
+  if(REGION_CATALOGS[key]!==catalog){
+    REGION_CATALOGS[key]=catalog;
+    regionOptions();
+  }
   const prior = regionId;
   regionStock.set(prior, new Map(stock));
   stock.clear();
   for (const [id, entry] of regionStock.get(key) || []) stock.set(id, entry);
   regionId = key;
   geoMode = key === "cheboksary" ? "intercity" : "local";
-  setNetwork(key);
+  setNetwork(key,prepared);
   Object.assign(SC_NODES, structuredClone(pilotNodes));
   if (catalog.depots?.length === 2) {
     for (const [i, k] of ["sc1", "sc2"].entries()) {
@@ -77,6 +94,7 @@ function configureRegion(key) {
     }
   }
   finalPvzId = catalog.defaultId && cityById.has(catalog.defaultId) ? catalog.defaultId : PVZ_LIST[0].id;
+  savedDestinations=new Set(PVZ_LIST.filter(p=>hasSavedItinerary(roadItinerary(chain("direct",null,p.id),"none"))).map(p=>p.id));
   populateSelect();
   el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(p.name, p.id)));
   el("regionSelect").value = key;
@@ -85,7 +103,7 @@ function configureRegion(key) {
   const counts = {wb:0, ozon:0, ym:0};
   for (const p of networkPoints) counts[p.brand]++;
   el("catalogStatus").textContent = catalog.city + " · WB " + counts.wb + " · Ozon " + counts.ozon +
-    " · Яндекс Маркет " + counts.ym + " · " + (catalog.source || "OSM + справочник v12") + " · " + catalog.date;
+    " · Яндекс Маркет " + counts.ym + " · " + [...new Set(networkPoints.map(p=>p.origin))].join(" / ") + " · срез "+catalog.date + ". Полный путь через СЦ офлайн: " + savedDestinations.size + " из " + PVZ_LIST.length + " адресов WB.";
   el("presetCaption").textContent = "";
   document.querySelectorAll("[data-preset]").forEach(b => b.classList.remove("active"));
   setStyleMode(styleMode);
@@ -95,23 +113,27 @@ function configureRegion(key) {
 }
 
 function validateCatalog(input) {
-  if (!input || typeof input.city !== "string" || !input.city.trim() ||
-      !Array.isArray(input.points) || !input.points.length)
+  if(!input || typeof input.city!=="string" || !input.city.trim() || !Array.isArray(input.points) || !input.points.length)
     throw Error("Нужны название города и массив points.");
-  const validPosition = p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) &&
-    Math.abs(p[0]) < 85 && Math.abs(p[1]) <= 180;
-  if (!input.points.every(p => p && ["wb","ozon","ym"].includes(p.brand) && typeof p.id === "string" &&
-      !["sc-1","sc-2","sc-ch"].includes(p.id) && typeof p.name === "string" && validPosition(p.latlng)))
-    throw Error("Проверьте id, бренд, название и координаты каждой точки.");
-  const wb = input.points.filter(p => p.brand === "wb");
-  if (!wb.length) throw Error("В справочнике нет конечного пункта WB.");
-  if (input.depots && !(input.depots.length === 2 && input.depots.every(validPosition)))
-    throw Error("Нужны две координаты сценарных СЦ.");
-  if (!input.depots) {
-    // Только для эксперимента. Смещения не выдаются за координаты складов WB.
-    const [lat, lon] = wb[0].latlng;
-    input.depots = [[lat, lon - 0.028],[lat + 0.008, lon - 0.014]];
-    if (!input.depots.every(validPosition)) throw Error("Укажите координаты двух СЦ.");
-  }
-  return {...input, source: input.source || "Импорт команды", date: input.date || "дата неизвестна"};
+  const validPosition=p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite) &&
+    Math.abs(p[0])<85 && Math.abs(p[1])<=180;
+  const ids=new Set(["sc-1","sc-2","sc-ch"]);
+  const points=input.points.map(p=>{
+    if(!p || !["wb","ozon","ym"].includes(p.brand) || typeof p.id!=="string" || !p.id.trim() ||
+        typeof p.name!=="string" || !p.name.trim() || !validPosition(p.latlng))
+      throw Error("Проверьте ID, бренд, название и координаты каждой точки.");
+    const id=p.id.trim();
+    if(ids.has(id))throw Error("ID «"+id+"» повторяется или зарезервирован для СЦ. У каждой точки должен быть свой ID.");
+    ids.add(id);
+    return {id,brand:p.brand,name:p.name.trim(),latlng:p.latlng};
+  });
+  const wb=points.find(p=>p.brand==="wb");
+  if(!wb)throw Error("В справочнике нет конечного пункта WB.");
+  const [lat,lon]=wb.latlng;
+  const depots=input.depots??[[lat,lon-0.028],[lat+0.008,lon-0.014]];
+  if(!Array.isArray(depots)||depots.length!==2||!depots.every(validPosition))throw Error("Укажите координаты двух СЦ.");
+  return {city:input.city.trim(),points,depots,defaultId:input.defaultId,
+    boundary:typeof input.boundary==="string"?input.boundary:undefined,
+    source:typeof input.source==="string"&&input.source.trim()?input.source.trim():"Импорт команды",
+    date:typeof input.date==="string"?input.date:"дата неизвестна"};
 }

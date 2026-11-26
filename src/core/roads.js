@@ -53,6 +53,20 @@ function legOf(a,b) {
   return leg;
 }
 
+function hasSavedItinerary(ids){
+  const pilot=regionId==="yoshkar-ola" || regionId==="cheboksary";
+  return ids.slice(1).every((b,i)=>{
+    const key=ids[i]+">"+b;
+    return REGION_ROADS[regionId]?.[key] || (pilot && roads[key]);
+  });
+}
+
+function coverageFor(incident){
+  const options=[chain("direct",null),...hubPool.map(p=>chain("hybrid",p))];
+  const chains=options.map(ids=>roadItinerary(ids,incident));
+  return {chains,complete:chains.filter(hasItinerary).length};
+}
+
 async function fetchChain(ids, signal) {
   if (ids.every((id,i) => !i || legOf(ids[i-1],id))) return;
   const locations = ids.map(id => {
@@ -69,7 +83,7 @@ async function fetchChain(ids, signal) {
   if (signal.aborted) return;
   const legs = trip.legs.map((leg,i) => roadLeg(ids[i]+">"+ids[i+1],
     {shape:leg.shape,km:leg.summary.length,sec:leg.summary.time}));
-  for (const [i,leg] of legs.entries()) legCache.set(legKey(ids[i],ids[i+1]),leg);
+  for (const [i,leg] of legs.entries()) if(!legOf(ids[i],ids[i+1]))legCache.set(legKey(ids[i],ids[i+1]),leg);
 }
 
 async function refreshDestination() {
@@ -78,11 +92,8 @@ async function refreshDestination() {
   activeRequest = controller;
   const generation = ++roadGeneration;
   hubPool = candidatePoints();
-  neighborhood = summarizeNeighborhood(cityById.get(finalPvzId));
   recalculateAll();
-  const final = finalPvzId;
-  const addReverse = (ids) => [...ids, ids.at(-2), final, "sc-1"];
-  const chains = [addReverse(chain("direct",null)), ...hubPool.map(p => addReverse(chain("hybrid",p)))];
+  const {chains}=coverageFor(el("incident").value);
   const pending = chains.filter(ids => ids.some((b,i) => i && !legOf(ids[i-1],b)));
   function status() {
     const complete = chains.filter(ids => ids.every((b,i) => !i || legOf(ids[i-1],b))).length;
@@ -105,7 +116,9 @@ async function refreshDestination() {
   status();
   const time = elapsed, resume = playing;
   recalculateAll();
-  elapsed = time;
-  updateClock();
-  if (resume && elapsed < CONFIG.shiftMinutes) toggleSimulation();
+  if(!planIssue){
+    elapsed=time;
+    updateClock();
+    if(resume && elapsed<CONFIG.shiftMinutes)toggleSimulation();
+  }
 }

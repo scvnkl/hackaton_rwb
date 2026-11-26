@@ -15,16 +15,16 @@ def stylesheet(match):
             return ref[0]
         data = base64.b64encode(target.read_bytes()).decode()
         return f'url(data:{mimetypes.guess_type(target)[0]};base64,{data})'
-    css = re.sub(r'url\(["\']?([^"\')]+)["\']?\)', asset, path.read_text())
+    css = re.sub(r'url\(["\']?([^"\')]+)["\']?\)', asset, path.read_text(encoding="utf-8"))
     return "<style>" + css + "</style>"
 
 
 def build():
-    html = (ROOT / "index.html").read_text()
+    html = (ROOT / "index.html").read_text(encoding="utf-8")
     html = re.sub(r'<link rel="stylesheet" href="([^"]+)"\s*/>', stylesheet, html)
     scripts = []
     def inline(match):
-        source = (ROOT / match[1]).read_text()
+        source = (ROOT / match[1]).read_text(encoding="utf-8")
         source = re.sub(r"</script", lambda _: r"<\/script", source, flags=re.I)
         scripts.append("<script>\n" + source + "\n</script>")
         return ""
@@ -33,4 +33,4 @@ def build():
 
 
 if __name__ == "__main__":
-    (ROOT / "pvz-wb-real-streets-v12.html").write_text(build(), encoding="utf8")
+    (ROOT / "pvz-wb-real-streets-v12.html").write_bytes(build().encode("utf-8"))

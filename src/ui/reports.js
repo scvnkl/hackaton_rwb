@@ -37,8 +37,9 @@ function econTable() {
   row("Компенсация покупателю (SLA) / оплаченный заказ", (r) =>
     rub(r.compPerOrder),
   );
-  row("ПВЗ-хаб · вклад после труда, до аренды", r => rub((r.pvzHub -
-    r.res.reduce((s,v) => s + v.work * CONFIG.hubWorkPerMin, 0)) / r.n));
+  row("ПВЗ-хаб · хранение за счёт продавца", r => rub(r.pvzStorage / r.n));
+  row("ПВЗ-хаб · вклад после оплаты труда, до аренды",
+    r => rub((r.pvzHub + r.pvzStorage - hubLabour(r)) / r.n));
   row("Продавец · хранение", r => rub(r.seller.storage / r.n));
   row("Продавец · остаток от продажи после логистики", r =>
     rub((CONFIG.sellerGrossPerSale * (r.issued-r.returned) - r.seller.total) / r.n));
@@ -52,6 +53,7 @@ function econTable() {
   return view;
 }
 function report() {
+  if(planIssue){const message=document.createElement("p");message.className="plan-message";message.textContent=planIssue;return message;}
   const view = el("shift-view").content.cloneNode(true);
   const classic = metrics("direct", CONFIG.shiftMinutes),
     hybrid = metrics("hybrid", CONFIG.shiftMinutes);
@@ -89,6 +91,17 @@ function report() {
       reason += " Обе схемы убыточны при заданных ставках.";
   }
 
+  const coverage=coverageFor(el("incident").value);
+  if (coverage.complete < coverage.chains.length) {
+    const noHybridRoad=coverageFor("none").complete === 1;
+    const eligible=hubPool.some(p => calcLoadPct(p)<=CONFIG.network.maxLoadForHub && room(p).litres>=manifest()*volume());
+    if(noHybridRoad && eligible && fits() && (parcelCategory()!=="oversize" || el("bulkConsent").checked)){
+      title="Недостаточно дорожных данных для сравнения с ПВЗ-хабом";
+      reason="В обеих колонках показаны фактически доступные рейсы через СЦ. Обновите дороги для оценки альтернативы.";
+    } else {
+      reason+=" Сравнение охватывает дорожные цепочки с подтверждённым треком ("+coverage.complete+" из "+coverage.chains.length+" для первого рейса).";
+    }
+  }
   view.querySelector("h3").textContent = title;
   view.querySelector(".recommendation p").textContent = reason;
   for (const [key, m] of [
@@ -109,6 +122,7 @@ function report() {
       demand,
       m.issued + " / " + m.back,
       demand - m.issued,
+      rub(m.pvzStorage),
       rub(m.margin),
     ]);
   }
@@ -136,7 +150,7 @@ function report() {
 function renderAnalyticsDrawer() {
   el("drawerSubtitle").textContent =
     "Сравнение при одинаковом спросе и парке машин";
-  el("drawerBodyContent").replaceChildren(econTable(), report());
+  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [econTable(),report()]));
 }
 function toggleAnalyticsDrawer() {
   drawerOpen = !drawerOpen;
@@ -148,11 +162,12 @@ function openSummaryModal() {
   el("summaryTopKpis").replaceChildren(report());
   const body = el("summaryTable").tBodies[0];
   body.replaceChildren();
-  for (const [key, r] of Object.entries(previews))
+  el("summaryTable").hidden=Boolean(planIssue);
+  if(!planIssue)for (const [key, r] of Object.entries(previews))
     addRow(body, [
       key === "direct" ? "Классика" : "Гибрид",
       r ? pathName(r) : "Доставка недоступна",
-      tariffLabel(key),
+      r ? rub(r.referencePrice) : "—",
       r ? rub(r.price) : "—",
     ]);
   el("summaryModal").classList.add("open");

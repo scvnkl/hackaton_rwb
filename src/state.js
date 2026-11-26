@@ -1,5 +1,4 @@
 let geoMode = "local";
-let parcelSize = "small";
 let routeMode = "hybrid"; // 'direct' = СЦ 1 -> СЦ 2 -> Конечный ПВЗ; 'hybrid' = СЦ 1 -> Гибридный ПВЗ-склад -> Конечный ПВЗ
 let finalPvzId = "yo-1";
 let styleMode = "vector";
@@ -13,7 +12,7 @@ let activeChain = {
 };
 const el = (id) => document.getElementById(id),
   val = (id) => Number(el(id).value),
-  rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " ₽";
+  rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " ₽";
 const nodeName = id => {
   const depot = Object.values(SC_NODES).find(p => p.id === id);
   return depot ? depot.label.replace(/\n/g, " · ") : cityById.get(id)?.name;
@@ -25,6 +24,7 @@ const volumes = {
   oversize: [90, 45, 40, 18],
 };
 const stock = new Map();
+let planIssue = "";
 let runs = {},
   previews = {},
   drawerOpen = false,

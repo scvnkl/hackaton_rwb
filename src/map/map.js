@@ -43,22 +43,41 @@ function plot(active = []) {
         .bindTooltip(
           leg.estimatedGeometry
             ? "Схематичное плечо без дорожного трека"
-            : "Дорожный трек OSM",
+            : (leg.source==="valhalla"?"Дорожный маршрут Valhalla":"Дорожный трек OSM"),
         )
         .addTo(roadsLayer);
     }
 }
+let mapContext={hubs:new Set(),handling:new Set(),reserved:new Map(),key:null};
+function updateMapContext(current,force=false) {
+  const reserve=new Map();
+  for(const v of runs[routeMode]?.book || []){
+    if(v.a<=elapsed && elapsed<v.b)reserve.set(v.id,(reserve.get(v.id)||0)+v.litres);
+  }
+  const shown=current.length?current:[previews[routeMode]].filter(Boolean);
+  const hubs=new Set([...reserve.keys(),...shown.filter(r=>r.hub).map(r=>r.hub.id)]);
+  const handling=new Set(current.filter(r=>r.hub && r.res.some(v=>v.work && v.a<=elapsed && elapsed<v.b)).map(r=>r.hub.id));
+  const key=JSON.stringify([routeMode,finalPvzId,shown.map(r=>[r.van,r.start,r.ids]),[...handling],[...reserve]]);
+  if(!force && mapContext.key===key)return;
+  mapContext={hubs,handling,reserved:reserve,key};
+  renderMarkers();
+  const final=cityById.get(finalPvzId);
+  if(final)renderLoadDetail(final,reserve.get(finalPvzId)||0);
+  if(!planIssue){
+    el("chainExplanation").textContent=current.length?current.map(r=>"Машина "+r.van+" · "+pathName(r)).join("\n"):
+      shown.length?"Пример партии · "+pathName(shown[0])+(shown[0].reason?" · "+shown[0].reason:""):"Нет рейса";
+  }
+}
 function renderMarkers() {
   markersLayer.clearLayers();
-  const { hubPvz, finalPvz } = activeChain;
 
   const visiblePvz = PVZ_LIST;
   const bounds = map.getBounds().pad(0.1);
   visiblePvz.forEach((pvz) => {
-    if (!bounds.contains(pvz.latlng) && pvz.id !== finalPvzId && pvz !== hubPvz) return;
-    const pct = calcLoadPct(pvz);
-    const isFinal = pvz.id === finalPvz.id;
-    const isHub = routeMode === "hybrid" && hubPvz && pvz.id === hubPvz.id;
+    if (!bounds.contains(pvz.latlng) && pvz.id !== finalPvzId && !mapContext.hubs.has(pvz.id)) return;
+    const pct = calcLoadPct(pvz,mapContext.reserved.get(pvz.id)||0);
+    const isFinal = pvz.id === finalPvzId;
+    const isHub = mapContext.hubs.has(pvz.id);
 
     let extraClass = "";
     let badgeText = `${pct}%`;
@@ -80,11 +99,11 @@ function renderMarkers() {
     const roleLabel = isFinal
       ? "КОНЕЧНЫЙ ПВЗ"
       : isHub
-        ? "ГИБРИДНЫЙ ПВЗ-СКЛАД"
+        ? (mapContext.handling.has(pvz.id)?"ПВЗ-СКЛАД · обработка партии":"ПВЗ-СКЛАД рейса")
         : "ПВЗ";
     const m = visiblePvz.length > 350 && !isFinal && !isHub
       ? L.circleMarker(pvz.latlng, {radius:5, color: pct > 80 ? "#bd354d" : "#7c3caa", renderer:pointRenderer})
-      : L.marker(pvz.latlng, {icon});
+      : L.marker(pvz.latlng, {icon, zIndexOffset:isFinal ? 650 : isHub ? 600 : 0});
     const tip = document.createElement("span");
     tip.textContent = roleLabel + " · " + pvz.name + " · модельная загрузка " + pct + "%";
     m.addTo(markersLayer).bindTooltip(tip, {direction:"top"});

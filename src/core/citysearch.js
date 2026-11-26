@@ -9,6 +9,7 @@ function findOperator(tags) {
 }
 async function searchRegion(query) {
   if (!query) return;
+  ++catalogGeneration;
   citySearch?.abort();
   const controller = new AbortController();
   citySearch = controller;
@@ -57,9 +58,8 @@ async function searchRegion(query) {
     points.sort((a,b) => haversineM(a.latlng,center) - haversineM(b.latlng,center));
     const catalog = validateCatalog({city:place.name || query,points,source:"OpenStreetMap · ODbL",
       boundary:"https://www.openstreetmap.org/relation/" + place.osm_id,date:result.osm3s?.timestamp_osm_base?.slice(0,10)});
-    REGION_CATALOGS[key] = catalog;
-    regionOptions();
-    configureRegion(key);
+    if(controller.signal.aborted)return;
+    configureRegion(key,catalog);
     status.textContent = place.display_name;
   } catch (e) {
     if (!controller.signal.aborted) status.textContent = "Загрузка региона: " + e.message;

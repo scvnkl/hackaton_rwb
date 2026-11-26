@@ -1,120 +1,124 @@
-function storeAction(action) {
-  const id = el("stockPoint").value,
-    entry = inventory(id),
-    unit = volume();
-  let msg = "";
-  if (action === "receive") {
-    if (
-      entry.units ||
-      !fits() ||
-      room(PVZ_LIST.find((x) => x.id === id)).litres < unit * 10
-    )
-      msg =
-        "Отказ: партия уже на полке, недостаточно места или превышены габариты.";
-    else Object.assign(entry, { units: 10, litres: 10 * unit, unit });
-  }
-  if (action === "sell" && entry.units >= 2) {
-    entry.units -= 2;
-    entry.litres = entry.units * entry.unit;
-  }
-  if (action === "day") entry.fee += entry.units * CONFIG.storagePerBoxDay;
-  stock.set(id, entry);
-  updateParameters();
-  el("stockStatus").textContent += msg;
+const numericFields=["batch","dim0","dim1","dim2","kg","storageDays"];
+const fieldNames={batch:"Заказов в партии",dim0:"Длина",dim1:"Ширина",dim2:"Высота",kg:"Масса",storageDays:"Сутки хранения"};
+const sizeNames={small:"малая",medium:"средняя",oversize:"габаритная"};
+
+function renderManualStock(message=""){
+  const item=inventory(el("stockPoint").value);
+  el("stockStatus").textContent="Остаток "+item.units+" шт. · "+item.litres.toLocaleString("ru-RU")+" л · начислено ПВЗ за счёт продавца "+rub(item.fee)+". "+message;
 }
-function updateParameters() {
-  const next = candidatePoints();
-  if (next.length !== hubPool.length || next.some((p,i) => hubPool[i] !== p)) refreshDestination();
+function storeAction(action){
+  if(!validateInputs())return;
+  const id=el("stockPoint").value, point=cityById.get(id);
+  if(!point)return;
+  const entry={...inventory(id)},unit=volume();
+  if(action==="receive"){
+    const claimed=reservedAt(runs[routeMode]?.book||[],id,elapsed);
+    if(entry.units||!fits()||unit*10>room(point,claimed).litres){
+      renderManualStock("Отказ: проверьте остаток, габариты и доступный объём полки.");return;
+    }
+    Object.assign(entry,{units:10,litres:10*unit,unit});
+  }else if(action==="sell" && entry.units>=2){
+    entry.units-=2;entry.litres=entry.units*entry.unit;
+  }else if(action==="day"){
+    entry.fee+=entry.units*CONFIG.storagePerBoxDay;
+  }else return;
+  stock.set(id,entry);updateParameters();
+}
+
+function setUnavailable(message){
+  stopClock();elapsed=0;planIssue=message;
+  runs={};previews={direct:null,hybrid:null};
+  activeChain.hubPvz=null;
+  el("planStatus").hidden=false;
+  el("planStatus").textContent=message;
+  el("btnToggleSim").disabled=true;el("scrub").disabled=true;
+  el("scrub").value=0;el("simClock").textContent="Смена —";
+  for(const id of ["stDelivered","stActiveTrucks","stMpSaved","stPvzEarned","mDirectKm","mHybridKm","priceDirect","priceHybrid"])
+    el(id).textContent="—";
+  el("truckLegStatus").textContent="Ожидание расчёта";
+  el("liveLog").textContent="";el("chainExplanation").textContent=message;
+  el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
+  el("storedLot").hidden=true;
+  trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
+  if(drawerOpen)renderAnalyticsDrawer();
+  if(el("summaryModal").classList.contains("open"))openSummaryModal();
+}
+
+function validateInputs(){
+  const invalid=numericFields.find(id=>!el(id).checkValidity()||!Number.isFinite(val(id)));
+  if(invalid || !Number.isSafeInteger(val("batch")) || !Number.isSafeInteger(val("storageDays")*1440)){
+    const id=invalid||(!Number.isSafeInteger(val("batch"))?"batch":"storageDays");
+    setUnavailable("Проверьте поле «"+fieldNames[id]+"». Результаты предыдущего расчёта устарели.");
+    return false;
+  }
+  return true;
+}
+function updateParameters(){
+  if(!validateInputs())return;
+  const next=candidatePoints();
+  if(next.length!==hubPool.length||next.some((p,i)=>p!==hubPool[i]))refreshDestination();
   else recalculateAll();
 }
-function recalculateAll() {
-  for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
-    let f = el(id);
-    if (!f.reportValidity()) {
-      stopClock();
-      return;
-    }
-  }
-  stopClock();
-  el("bulkConsentRow").hidden = parcelSize !== "oversize";
-  elapsed = 0;
-  const final = PVZ_LIST.find((p) => p.id === finalPvzId);
-  activeChain.finalPvz = final;
-  let n = manifest();
-  for (let mode of ["direct", "hybrid"]) {
-    previews[mode] = n ? choose(mode, n, 0, el("incident").value, []) : null;
-    runs[mode] = schedule(mode);
-  }
-  const r = previews[routeMode],
-    h = previews.hybrid;
-  activeChain.hubPvz = h?.hub;
-  activeChain.directKm = previews.direct?.outKm;
-  activeChain.hybridKm = h?.outKm;
-  el("headerSubStatus").textContent =
-    "Диспетчер WB · модель смены · координаты СЦ сценарные";
-  el("mDirectKm").textContent = previews.direct
-    ? previews.direct.outKm.toFixed(2) + " км"
-    : "—";
-  el("mHybridKm").textContent = h ? h.outKm.toFixed(2) + " км" : "—";
-  el("mFinalLoad").textContent = calcLoadPct(final) + "%";
-  const {counts,nearest} = neighborhood;
-  const available = room(final);
-  el("loadDetail").textContent = "В 1,6 км от выбранного ПВЗ: WB " + counts.wb + ", Ozon " +
-    counts.ozon + ", Яндекс Маркет " + counts.ym + ". Ближайший сосед: " +
-    (Number.isFinite(nearest) ? Math.round(nearest) + " м" : "нет в справочнике") +
-    ". Модельная загрузка " + calcLoadPct(final) + "%, свободно " + Math.round(available.litres) + " л.";
-  el("priceDirect").textContent = tariffLabel("direct");
-  el("priceHybrid").textContent = tariffLabel("hybrid");
-  el("metaHybrid").textContent = !h
-    ? "Доставка недоступна"
-    : h.mode === "direct"
-      ? "Эта партия поедет через СЦ за " +
-        rub(h.price) +
-        " / заказ. " +
-        h.reason +
-        "."
-      : "К оплате с учётом SLA: " + rub(h.price) + " / заказ.";
-  el("chainExplanation").textContent = r
-    ? pathName(r) + (r.reason ? " · " + r.reason : "")
-    : "Недостаточная вместимость или дорожный маршрут недоступен";
-  el("costSplitCard").replaceChildren(econTable());
-  el("ordersCountLabel").textContent =
-    Math.round((140 * val("flowSlider")) / 100) + " зак/ч";
-  el("shelfValue").textContent = val("shelfSlider") - 100 + " п.п.";
-  el("flowLabel").textContent = val("flowSlider") / 100 + "×";
-  el("truckCountLabel").textContent = val("truckCountSlider");
-  for (const [id, m] of [
-    ["optDirect", "direct"],
-    ["optHybrid", "hybrid"],
-  ])
-    el(id).classList.toggle("active", m === routeMode);
-  const inv = inventory(el("stockPoint").value);
-  el("stockStatus").textContent =
-    "Остаток " +
-    inv.units +
-    " шт. · " +
-    inv.litres +
-    " л · начислено ПВЗ за счёт продавца " +
-    rub(inv.fee) +
-    ". ";
-  renderMarkers();
-  plot();
-  updateClock();
-  if (drawerOpen) renderAnalyticsDrawer();
+
+function renderLoadDetail(final, reserved=0){
+  const profile=summarizeNeighborhood(final),counts=profile.counts;
+  const {radius,perKm2}=profile;
+  const effective=competitionIndex(final);
+  el("mFinalLoad").textContent=calcLoadPct(final,reserved)+"%";
+  el("loadDetail").textContent="В радиусе "+(radius/1000).toLocaleString("ru-RU")+" км: WB "+counts.wb+", Ozon "+counts.ozon+", Яндекс Маркет "+counts.ym+
+    " · "+perKm2.toLocaleString("ru-RU",{maximumFractionDigits:1})+" точек/км². Индекс с учётом расстояния и бренда: "+effective.toLocaleString("ru-RU",{maximumFractionDigits:2})+
+    ". Фоновая загрузка "+backgroundLoad(final)+"%, свободно "+Math.floor(room(final,reserved).litres).toLocaleString("ru-RU")+" л. Источник точки: "+final.origin+". При одинаковом районном спросе соседи делят поток заказов.";
 }
 
-function populateSelect() {
-  const list = PVZ_LIST;
-  el("finalPvzSelect").replaceChildren(
-    ...list.map(
-      (p) => new Option("Конечный ПВЗ (" + p.city + "): " + p.name, p.id),
-    ),
-  );
-
-  if (!list.some((p) => p.id === finalPvzId)) {
-    finalPvzId = list[0].id;
+function recalculateAll(){
+  if(!validateInputs())return;
+  stopClock();elapsed=0;
+  const final=cityById.get(finalPvzId);
+  activeChain.finalPvz=final;
+  const size=parcelCategory(), consent=el("bulkConsent");
+  if(size!=="oversize")consent.checked=false;
+  el("bulkConsentRow").hidden=size!=="oversize";
+  el("packageClass").textContent=sizeNames[size];
+  for(const button of document.querySelectorAll("[data-size]"))button.classList.toggle("active",button.dataset.size===size);
+  el("headerSubStatus").textContent="Диспетчер WB · модель смены · координаты СЦ сценарные";
+  el("ordersCountLabel").textContent=Math.round(140*val("flowSlider")/100)+" зак/ч";
+  el("shelfValue").textContent=(val("shelfSlider")-100)+" п.п.";
+  el("flowLabel").textContent=val("flowSlider")/100+"×";
+  el("truckCountLabel").textContent=val("truckCountSlider");
+  renderManualStock();renderLoadDetail(final);
+  const n=manifest(),incident=el("incident").value;
+  if(!n){setUnavailable("Партия не помещается в машину. Проверьте размеры и массу.");return;}
+  if(!hasItinerary(roadItinerary(chain("direct",null),incident))){
+    setUnavailable("Недостаточно дорожных данных. Для этого адреса нет полной цепочки через СЦ. Обновите дороги или выберите адрес из группы «Через СЦ офлайн».");return;
   }
-  document.getElementById("finalPvzSelect").value = finalPvzId;
+  planIssue="";
+  el("planStatus").hidden=true;el("btnToggleSim").disabled=false;el("scrub").disabled=false;
+  for(const mode of ["direct","hybrid"]){
+    previews[mode]=choose(mode,n,0,incident,[],0,Infinity,val("storageDays"));
+    runs[mode]=schedule(mode);
+  }
+  const h=previews.hybrid,d=previews.direct;
+  activeChain.hubPvz=h?.hub;
+  activeChain.directKm=d?.outKm;activeChain.hybridKm=h?.outKm;
+  el("mDirectKm").textContent=d?d.outKm.toFixed(2)+" км":"—";
+  el("mHybridKm").textContent=h?h.outKm.toFixed(2)+" км":"—";
+  el("metaDirect").textContent=d?.openingLot ? "Первая партия ожидает на СЦ 2. Машина выезжает из СЦ 1 за запасом." : "Обработка партии на СЦ 1 и СЦ 2.";
+  el("priceDirect").textContent=tariffLabel("direct");el("priceHybrid").textContent=tariffLabel("hybrid");
+  el("metaHybrid").textContent=!h?"Недостаточно дорожных данных":h.mode==="direct"?"Через СЦ за "+rub(h.price)+" / заказ. "+h.reason+".":
+    h.premium ? "Тариф СЦ "+rub(h.referencePrice)+" + доплата "+rub(h.premium)+(h.compPerOrder?" − компенсация "+rub(h.compPerOrder):"")+" = "+rub(h.price)+" / заказ." : "К оплате с учётом скидки и SLA: "+rub(h.price)+" / заказ.";
+  el("costSplitCard").replaceChildren(econTable());
+  updateClock(true);
+  if(drawerOpen)renderAnalyticsDrawer();
+  if(el("summaryModal").classList.contains("open"))openSummaryModal();
+}
+
+function populateSelect(){
+  const local=document.createElement("optgroup"), online=document.createElement("optgroup");
+  local.label="Через СЦ офлайн · "+savedDestinations.size;
+  online.label="Остальные адреса · дороги по сети";
+  for(const p of PVZ_LIST)(savedDestinations.has(p.id)?local:online).append(new Option(p.name,p.id));
+  el("finalPvzSelect").replaceChildren(...[local,online].filter(g=>g.children.length));
+  el("finalPvzSelect").value=finalPvzId;
 }
 
 function onFinalPvzChange() {
@@ -126,25 +130,17 @@ function setGeo(g) {
   configureRegion(g === "intercity" ? "cheboksary" : "yoshkar-ola");
 }
 
-function setSize(sz) {
-  parcelSize = sz;
-  volumes[sz].forEach((v, i) => (el(i === 3 ? "kg" : "dim" + i).value = v));
-  document
-    .querySelectorAll("#sizeGroup .seg-btn")
-    .forEach((b) => b.classList.toggle("active", b.dataset.size === sz));
-  recalculateAll();
+function setSize(size) {
+  volumes[size].forEach((v,i)=>el(i===3?"kg":"dim"+i).value=v);
+  updateParameters();
 }
 
-function setRouteMode(rm) {
-  if (!["direct", "hybrid"].includes(rm)) return;
-  routeMode = rm;
-  document
-    .getElementById("optDirect")
-    .classList.toggle("active", rm === "direct");
-  document
-    .getElementById("optHybrid")
-    .classList.toggle("active", rm === "hybrid");
-  recalculateAll();
+function setRouteMode(mode) {
+  if(!["direct","hybrid"].includes(mode))return;
+  routeMode=mode;
+  for(const [id,key] of [["optDirect","direct"],["optHybrid","hybrid"]])
+    el(id).classList.toggle("active",key===routeMode);
+  if(!planIssue)updateClock(true);
 }
 
 function setStyleMode(m) {

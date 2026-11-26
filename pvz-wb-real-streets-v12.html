@@ -1398,6 +1398,11 @@ input[type="range"] {
   margin: 12px 0;
   font-size: 12px;
 }
+[hidden] { display:none !important; }
+.plan-message, .lot-panel { padding:9px 12px; border-left:3px solid var(--wb-dark); background:#f6f2fa; }
+.plan-message {font-size:12px;}
+button:disabled, input:disabled {opacity:.6;cursor:default}
+.chain-banner {white-space:pre-line}
 .preset-row {
   display: flex;
   flex-wrap: wrap;
@@ -1593,6 +1598,7 @@ input[type="range"] {
             value="100"
           />
 
+          <p id="planStatus" class="plan-message" role="status" hidden></p>
           <label
             >Минута смены
             <input id="scrub" type="range" min="0" max="480" value="0" /></label
@@ -1614,7 +1620,7 @@ input[type="range"] {
             </div>
             <div class="stat-cell">
               <div class="payment-value stat-num" id="stPvzEarned">0 ₽</div>
-              <div class="stat-txt">Пересортировка в ПВЗ · закрытые рейсы</div>
+              <div class="stat-txt">Начислено ПВЗ-хабам за обработку и хранение</div>
             </div>
           </div>
         </div>
@@ -1709,7 +1715,7 @@ input[type="range"] {
                 value="100"
             /></label>
             <label
-              >Хранение партии, суток
+              >Хранение первой партии до смены, суток
               <input
                 id="storageDays"
                 type="number"
@@ -1719,8 +1725,7 @@ input[type="range"] {
                 required
             /></label>
             <label
-              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние
-              ПВЗ</label
+              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние Ozon и Яндекс Маркет вместе с WB</label
             >
             <label
               >Заказов в партии
@@ -1732,7 +1737,7 @@ input[type="range"] {
                 step="1"
                 required
             /></label>
-            <p>Упаковка, см (Д × Ш × В), и масса, кг</p>
+            <p>Упаковка, см (Д × Ш × В), и масса, кг. Тарифная категория: <strong id="packageClass"></strong>.</p>
             <label
               >Д
               <input
@@ -1787,7 +1792,11 @@ input[type="range"] {
                 <option value="error">Пересорт одной коробки</option>
               </select></label
             >
-            <h3>Хранение запаса продавца</h3>
+            <section id="storedLot" class="lot-panel" hidden>
+              <h3>Первая партия со хранения</h3><p id="lotLedger"></p>
+              <button id="showStoragePickup" type="button">К моменту отгрузки</button>
+            </section>
+            <h3>Ручной остаток продавца</h3>
             <select id="stockPoint"></select>
             <button data-stock="receive">Принять 10</button
             ><button data-stock="sell">Продать 2</button
@@ -1847,7 +1856,7 @@ input[type="range"] {
             <tr>
               <th>Схема</th>
               <th>Узлы</th>
-              <th>Тариф / заказ</th>
+              <th>Базовый тариф СЦ / заказ</th>
               <th>К оплате / заказ</th>
             </tr>
           </thead>
@@ -1923,14 +1932,14 @@ input[type="range"] {
             <th>Спрос</th>
             <th>Выдано / возвраты</th>
             <th>Не вывезено</th>
-            <th>Остаток WB</th>
+            <th>ПВЗ · хранение</th><th>Остаток WB</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
       <p>
         Допуск рейса — машина успевает вернуться до конца смены. Невывезенный
-        спрос переносится. Возвраты сторнируют выручку, расходы исправления
+        спрос остаётся в очереди на конец смены. Возвраты сторнируют выручку, расходы исправления
         оплачивает WB.
       </p></template
     >
@@ -1968,7 +1977,9 @@ const CONFIG = {
   sla: { freeMinutes: 20, rubPerHour: 25, maxExtraMin: 90 },
 
   // сеть ПВЗ
-  network: { catchmentM: 400, refDensity: 1.2, maxAdj: 12, maxLoadForHub: 80 },
+  // При равном районном спросе соседние пункты делят переменную часть нагрузки.
+  network: { catchmentM: 400, refDensity: 1.2, fixedLoad: 15, sharedLoad: 45, maxLoadForHub: 80 },
+  shelfLitres: 3000,
 
 
   // продавец
@@ -2025,91 +2036,78 @@ const PVZ_LIST = [
     city: "Йошкар-Ола",
     name: "Бульвар Чавайна, 16",
     latlng: [56.63162, 47.917009],
-    baseLoad: 50,
   },
   {
     id: "yo-2",
     city: "Йошкар-Ола",
     name: "ул. Эшкинина, 19",
     latlng: [56.632763, 47.91258],
-    baseLoad: 34,
   },
   {
     id: "yo-3",
     city: "Йошкар-Ола",
     name: "ул. Якова Эшпая, 107",
     latlng: [56.64497, 47.887176],
-    baseLoad: 40,
   },
   {
     id: "yo-4",
     city: "Йошкар-Ола",
     name: "Кремлёвская ул., 34",
     latlng: [56.63861, 47.88652],
-    baseLoad: 45,
   },
   {
     id: "yo-5",
     city: "Йошкар-Ола",
     name: "просп. Гагарина, 20",
     latlng: [56.62504, 47.88371],
-    baseLoad: 38,
   },
   {
     id: "yo-6",
     city: "Йошкар-Ола",
     name: "Бульвар Ураева, 6/1",
     latlng: [56.639308, 47.929881],
-    baseLoad: 35,
   },
   {
     id: "yo-7",
     city: "Йошкар-Ола",
     name: "ул. Димитрова, 61",
     latlng: [56.645772, 47.854737],
-    baseLoad: 43,
   },
   {
     id: "yo-8",
     city: "Йошкар-Ола",
     name: "ул. Строителей, 31",
     latlng: [56.62851, 47.852015],
-    baseLoad: 32,
   },
   {
     id: "ch-1",
     city: "Чебоксары",
     name: "просп. Ленина, 44",
     latlng: [56.119203, 47.256082],
-    baseLoad: 39,
   },
   {
     id: "ch-2",
     city: "Чебоксары",
     name: "просп. Мира, 76",
     latlng: [56.113456, 47.268784],
-    baseLoad: 44,
   },
   {
     id: "ch-3",
     city: "Чебоксары",
     name: "ул. Энтузиастов, 19",
     latlng: [56.122851, 47.192257],
-    baseLoad: 35,
   },
   {
     id: "ch-4",
     city: "Чебоксары",
     name: "Университетская ул., 11",
     latlng: [56.142265, 47.166691],
-    baseLoad: 49,
   },
   {
     id: "ch-5",
     city: "Чебоксары",
     name: "просп. Тракторостроителей, 36",
     latlng: [56.102036, 47.307969],
-    baseLoad: 37,
   },
 ];
 
@@ -151786,17 +151784,18 @@ function nodeLatLng(id) {
 </script>
 <script>
 const BRAND_WEIGHT = { wb: 1, ozon: 0.7, ym: 0.6 };
-let densityGrid = new Map();
-let densityCache = new Map();
-let cellLon = 0.03;
-const cellLat = 0.016;
+const densityGrid = new Map();
+const densityCache = new Map();
+let cellLat, cellLon, indexedPoints;
 
 function rebuildDensity(points) {
-  densityCache = new Map();
-  densityGrid = new Map();
-  // Размер ячейки не меньше радиуса поиска в обеих координатах региона.
+  densityGrid.clear();
+  densityCache.clear();
+  indexedPoints = points;
   const maxLat = points.reduce((max, p) => Math.max(max, Math.abs(p.latlng[0])), 0);
-  cellLon = cellLat / Math.max(0.01, Math.cos(maxLat * Math.PI / 180));
+  // A search disk fits in the origin cell and its immediate neighbors.
+  cellLat = (4 * CONFIG.network.catchmentM / EARTH_R) * 180 / Math.PI * 1.01;
+  cellLon = cellLat / Math.cos(Math.min(89, maxLat + cellLat) * Math.PI / 180);
   for (const p of points) {
     const key = [Math.floor(p.latlng[0]/cellLat), Math.floor(p.latlng[1]/cellLon)].join();
     if (!densityGrid.has(key)) densityGrid.set(key, []);
@@ -151804,39 +151803,41 @@ function rebuildDensity(points) {
   }
 }
 
-function competitionIndex(p) {
-  if (densityCache.has(p.id)) return densityCache.get(p.id);
-  const y = Math.floor(p.latlng[0]/cellLat), x = Math.floor(p.latlng[1]/cellLon);
-  let n = 0;
-  for (let i = -1; i <= 1; i++) for (let j = -1; j <= 1; j++)
-    for (const other of densityGrid.get([y+i, x+j].join()) || []) {
-      if (p.id === other.id) continue;
-      const meters = haversineM(p.latlng, other.latlng);
-      if (meters <= 4 * CONFIG.network.catchmentM)
-        n += BRAND_WEIGHT[other.brand] * Math.exp(-meters / CONFIG.network.catchmentM);
-    }
-  densityCache.set(p.id, n);
-  return n;
-}
-
-function effectiveLoad(p) {
-  const base = p.baseLoad ?? 40;
-  if (!el("useCompetition").checked) return base;
-  const cfg = CONFIG.network;
-  const adjustment = Math.round(cfg.maxAdj * Math.tanh((cfg.refDensity - competitionIndex(p)) / 1.5));
-  return Math.min(95, Math.max(20, base + adjustment));
-}
-
 function summarizeNeighborhood(point) {
-  const counts = {wb:0, ozon:0, ym:0};
-  let nearest = Infinity;
-  for (const other of networkPoints) {
-    if (other.id === point.id) continue;
-    const meters = haversineM(point.latlng, other.latlng);
-    nearest = Math.min(nearest, meters);
-    if (meters <= CONFIG.network.catchmentM * 4) counts[other.brand]++;
+  if (densityCache.has(point.id)) return densityCache.get(point.id);
+  const [lat,lon] = point.latlng;
+  const y = Math.floor(lat/cellLat), x = Math.floor(lon/cellLon);
+  const counts = {wb:0,ozon:0,ym:0}, weights = {wb:0,ozon:0,ym:0};
+  const radius = 4 * CONFIG.network.catchmentM;
+  const nearby = [];
+  if (Math.abs(lon) + cellLon >= 180) nearby.push(indexedPoints);
+  else for (let dy=-1; dy<=1; dy++) for(let dx=-1; dx<=1; dx++){
+    const cell=densityGrid.get([y+dy,x+dx].join());
+    if(cell) nearby.push(cell);
   }
-  return {counts, nearest};
+  let nearest = Infinity, total = 0;
+  for(const cell of nearby) for(const other of cell){
+    if(other.id===point.id)continue;
+    const metres=haversineM(point.latlng,other.latlng);
+    if(metres>radius)continue;
+    nearest=Math.min(nearest,metres);
+    counts[other.brand]++;
+    weights[other.brand]+=BRAND_WEIGHT[other.brand]*Math.exp(-metres/CONFIG.network.catchmentM);
+    total++;
+  }
+  const profile={counts,weights,nearest,radius,perKm2:total/(Math.PI*(radius/1000)**2)};
+  densityCache.set(point.id,profile);
+  return profile;
+}
+
+function competitionIndex(point) {
+  const w=summarizeNeighborhood(point).weights;
+  return w.wb + (el("useCompetition").checked ? w.ozon+w.ym : 0);
+}
+
+function effectiveLoad(point) {
+  const {fixedLoad,sharedLoad,refDensity}=CONFIG.network;
+  return fixedLoad + sharedLoad/(1+competitionIndex(point)/refDensity);
 }
 
 </script>
@@ -151847,19 +151848,19 @@ let regionId = "yoshkar-ola";
 let networkPoints = [];
 let cityById = new Map();
 let hubPool = [];
-let neighborhood;
+let savedDestinations = new Set();
 let roadGeneration = 0;
+let catalogGeneration = 0;
 const regionStock = new Map();
 
 function samePlace(a, b) {
   return a.brand === b.brand && haversineM(a.latlng, b.latlng) <= 30;
 }
 
-function setNetwork(key) {
-  const catalog = REGION_CATALOGS[key];
+function prepareNetwork(key, catalog) {
   const original = pilotPoints.filter(p => ["yoshkar-ola","cheboksary"].includes(key) && p.city === catalog.city)
-    .map(p => ({...p, brand: "wb"}));
-  networkPoints = original.slice();
+    .map(p => ({...p, brand: "wb", origin:"Пилот v12"}));
+  const points = original.slice();
   const ids = new Set(original.map(p => p.id));
   const grid = new Map();
   const cell = ([lat, lon]) => [Math.floor(lat * 400), Math.floor(lon * 200)];
@@ -151878,13 +151879,23 @@ function setNetwork(key) {
   }
   original.forEach(index);
   for (const row of catalog.points) {
-    const p = {...row, city: catalog.city};
+    const archive = ["yoshkar-ola","cheboksary"].includes(key);
+    const origin = archive && row.id.startsWith("wildberries-") ? "Пункты выдачи · архив Mesh Atlas" :
+      catalog.source || "OpenStreetMap · ODbL";
+    const p = {...row, city: catalog.city, origin};
     if (ids.has(p.id) || nearby(p.latlng).some(other => samePlace(p, other))) continue;
     ids.add(p.id);
-    networkPoints.push(p);
+    points.push(p);
     index(p);
   }
-  PVZ_LIST.splice(0, PVZ_LIST.length, ...networkPoints.filter(p => p.brand === "wb"));
+  const wb=points.filter(p=>p.brand==="wb");
+  if(!wb.length)throw Error("После объединения в справочнике нет ни одного ПВЗ Wildberries.");
+  return {points,wb};
+}
+
+function setNetwork(key, prepared=prepareNetwork(key,REGION_CATALOGS[key])){
+  networkPoints=prepared.points;
+  PVZ_LIST.splice(0,PVZ_LIST.length,...prepared.wb);
   cityById = new Map(PVZ_LIST.map(p => [p.id, p]));
   rebuildDensity(networkPoints);
 }
@@ -151902,16 +151913,23 @@ function candidatePoints() {
   return base;
 }
 
-function configureRegion(key) {
+function configureRegion(key, catalog=REGION_CATALOGS[key]) {
+  // Prepare and validate before changing a single field of the displayed region.
+  const prepared=prepareNetwork(key,catalog);
+  ++catalogGeneration;
   citySearch?.abort();
-  const catalog = REGION_CATALOGS[key];
+  el("importStatus").textContent = "";
+  if(REGION_CATALOGS[key]!==catalog){
+    REGION_CATALOGS[key]=catalog;
+    regionOptions();
+  }
   const prior = regionId;
   regionStock.set(prior, new Map(stock));
   stock.clear();
   for (const [id, entry] of regionStock.get(key) || []) stock.set(id, entry);
   regionId = key;
   geoMode = key === "cheboksary" ? "intercity" : "local";
-  setNetwork(key);
+  setNetwork(key,prepared);
   Object.assign(SC_NODES, structuredClone(pilotNodes));
   if (catalog.depots?.length === 2) {
     for (const [i, k] of ["sc1", "sc2"].entries()) {
@@ -151920,6 +151938,7 @@ function configureRegion(key) {
     }
   }
   finalPvzId = catalog.defaultId && cityById.has(catalog.defaultId) ? catalog.defaultId : PVZ_LIST[0].id;
+  savedDestinations=new Set(PVZ_LIST.filter(p=>hasSavedItinerary(roadItinerary(chain("direct",null,p.id),"none"))).map(p=>p.id));
   populateSelect();
   el("stockPoint").replaceChildren(...PVZ_LIST.map(p => new Option(p.name, p.id)));
   el("regionSelect").value = key;
@@ -151928,7 +151947,7 @@ function configureRegion(key) {
   const counts = {wb:0, ozon:0, ym:0};
   for (const p of networkPoints) counts[p.brand]++;
   el("catalogStatus").textContent = catalog.city + " · WB " + counts.wb + " · Ozon " + counts.ozon +
-    " · Яндекс Маркет " + counts.ym + " · " + (catalog.source || "OSM + справочник v12") + " · " + catalog.date;
+    " · Яндекс Маркет " + counts.ym + " · " + [...new Set(networkPoints.map(p=>p.origin))].join(" / ") + " · срез "+catalog.date + ". Полный путь через СЦ офлайн: " + savedDestinations.size + " из " + PVZ_LIST.length + " адресов WB.";
   el("presetCaption").textContent = "";
   document.querySelectorAll("[data-preset]").forEach(b => b.classList.remove("active"));
   setStyleMode(styleMode);
@@ -151938,25 +151957,29 @@ function configureRegion(key) {
 }
 
 function validateCatalog(input) {
-  if (!input || typeof input.city !== "string" || !input.city.trim() ||
-      !Array.isArray(input.points) || !input.points.length)
+  if(!input || typeof input.city!=="string" || !input.city.trim() || !Array.isArray(input.points) || !input.points.length)
     throw Error("Нужны название города и массив points.");
-  const validPosition = p => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite) &&
-    Math.abs(p[0]) < 85 && Math.abs(p[1]) <= 180;
-  if (!input.points.every(p => p && ["wb","ozon","ym"].includes(p.brand) && typeof p.id === "string" &&
-      !["sc-1","sc-2","sc-ch"].includes(p.id) && typeof p.name === "string" && validPosition(p.latlng)))
-    throw Error("Проверьте id, бренд, название и координаты каждой точки.");
-  const wb = input.points.filter(p => p.brand === "wb");
-  if (!wb.length) throw Error("В справочнике нет конечного пункта WB.");
-  if (input.depots && !(input.depots.length === 2 && input.depots.every(validPosition)))
-    throw Error("Нужны две координаты сценарных СЦ.");
-  if (!input.depots) {
-    // Только для эксперимента. Смещения не выдаются за координаты складов WB.
-    const [lat, lon] = wb[0].latlng;
-    input.depots = [[lat, lon - 0.028],[lat + 0.008, lon - 0.014]];
-    if (!input.depots.every(validPosition)) throw Error("Укажите координаты двух СЦ.");
-  }
-  return {...input, source: input.source || "Импорт команды", date: input.date || "дата неизвестна"};
+  const validPosition=p=>Array.isArray(p) && p.length===2 && p.every(Number.isFinite) &&
+    Math.abs(p[0])<85 && Math.abs(p[1])<=180;
+  const ids=new Set(["sc-1","sc-2","sc-ch"]);
+  const points=input.points.map(p=>{
+    if(!p || !["wb","ozon","ym"].includes(p.brand) || typeof p.id!=="string" || !p.id.trim() ||
+        typeof p.name!=="string" || !p.name.trim() || !validPosition(p.latlng))
+      throw Error("Проверьте ID, бренд, название и координаты каждой точки.");
+    const id=p.id.trim();
+    if(ids.has(id))throw Error("ID «"+id+"» повторяется или зарезервирован для СЦ. У каждой точки должен быть свой ID.");
+    ids.add(id);
+    return {id,brand:p.brand,name:p.name.trim(),latlng:p.latlng};
+  });
+  const wb=points.find(p=>p.brand==="wb");
+  if(!wb)throw Error("В справочнике нет конечного пункта WB.");
+  const [lat,lon]=wb.latlng;
+  const depots=input.depots??[[lat,lon-0.028],[lat+0.008,lon-0.014]];
+  if(!Array.isArray(depots)||depots.length!==2||!depots.every(validPosition))throw Error("Укажите координаты двух СЦ.");
+  return {city:input.city.trim(),points,depots,defaultId:input.defaultId,
+    boundary:typeof input.boundary==="string"?input.boundary:undefined,
+    source:typeof input.source==="string"&&input.source.trim()?input.source.trim():"Импорт команды",
+    date:typeof input.date==="string"?input.date:"дата неизвестна"};
 }
 
 </script>
@@ -151972,6 +151995,7 @@ function findOperator(tags) {
 }
 async function searchRegion(query) {
   if (!query) return;
+  ++catalogGeneration;
   citySearch?.abort();
   const controller = new AbortController();
   citySearch = controller;
@@ -152020,9 +152044,8 @@ async function searchRegion(query) {
     points.sort((a,b) => haversineM(a.latlng,center) - haversineM(b.latlng,center));
     const catalog = validateCatalog({city:place.name || query,points,source:"OpenStreetMap · ODbL",
       boundary:"https://www.openstreetmap.org/relation/" + place.osm_id,date:result.osm3s?.timestamp_osm_base?.slice(0,10)});
-    REGION_CATALOGS[key] = catalog;
-    regionOptions();
-    configureRegion(key);
+    if(controller.signal.aborted)return;
+    configureRegion(key,catalog);
     status.textContent = place.display_name;
   } catch (e) {
     if (!controller.signal.aborted) status.textContent = "Загрузка региона: " + e.message;
@@ -152086,6 +152109,20 @@ function legOf(a,b) {
   return leg;
 }
 
+function hasSavedItinerary(ids){
+  const pilot=regionId==="yoshkar-ola" || regionId==="cheboksary";
+  return ids.slice(1).every((b,i)=>{
+    const key=ids[i]+">"+b;
+    return REGION_ROADS[regionId]?.[key] || (pilot && roads[key]);
+  });
+}
+
+function coverageFor(incident){
+  const options=[chain("direct",null),...hubPool.map(p=>chain("hybrid",p))];
+  const chains=options.map(ids=>roadItinerary(ids,incident));
+  return {chains,complete:chains.filter(hasItinerary).length};
+}
+
 async function fetchChain(ids, signal) {
   if (ids.every((id,i) => !i || legOf(ids[i-1],id))) return;
   const locations = ids.map(id => {
@@ -152102,7 +152139,7 @@ async function fetchChain(ids, signal) {
   if (signal.aborted) return;
   const legs = trip.legs.map((leg,i) => roadLeg(ids[i]+">"+ids[i+1],
     {shape:leg.shape,km:leg.summary.length,sec:leg.summary.time}));
-  for (const [i,leg] of legs.entries()) legCache.set(legKey(ids[i],ids[i+1]),leg);
+  for (const [i,leg] of legs.entries()) if(!legOf(ids[i],ids[i+1]))legCache.set(legKey(ids[i],ids[i+1]),leg);
 }
 
 async function refreshDestination() {
@@ -152111,11 +152148,8 @@ async function refreshDestination() {
   activeRequest = controller;
   const generation = ++roadGeneration;
   hubPool = candidatePoints();
-  neighborhood = summarizeNeighborhood(cityById.get(finalPvzId));
   recalculateAll();
-  const final = finalPvzId;
-  const addReverse = (ids) => [...ids, ids.at(-2), final, "sc-1"];
-  const chains = [addReverse(chain("direct",null)), ...hubPool.map(p => addReverse(chain("hybrid",p)))];
+  const {chains}=coverageFor(el("incident").value);
   const pending = chains.filter(ids => ids.some((b,i) => i && !legOf(ids[i-1],b)));
   function status() {
     const complete = chains.filter(ids => ids.every((b,i) => !i || legOf(ids[i-1],b))).length;
@@ -152138,9 +152172,11 @@ async function refreshDestination() {
   status();
   const time = elapsed, resume = playing;
   recalculateAll();
-  elapsed = time;
-  updateClock();
-  if (resume && elapsed < CONFIG.shiftMinutes) toggleSimulation();
+  if(!planIssue){
+    elapsed=time;
+    updateClock();
+    if(resume && elapsed<CONFIG.shiftMinutes)toggleSimulation();
+  }
 }
 
 </script>
@@ -152161,11 +152197,13 @@ function sweepMatrix() {
   const tariffs = [8, 12, 16, 20, 24, 28];
   const loads = [50, 65, 80, 90];
 
+  if (planIssue) throw Error(planIssue);
+  const size = parcelCategory();
   const saved = {
     batch: el("batch").value,
     flow: el("flowSlider").value,
     trucks: el("truckCountSlider").value,
-    fee: CONFIG.hubPerBox[parcelSize],
+    fee: CONFIG.hubPerBox[size],
     override: LOAD_OVERRIDE,
   };
 
@@ -152178,7 +152216,7 @@ function sweepMatrix() {
     for (const load of loads) {
       LOAD_OVERRIDE = load;
       for (const fee of tariffs) {
-        CONFIG.hubPerBox[parcelSize] = fee;
+        CONFIG.hubPerBox[size] = fee;
 
         const direct = schedule("direct");
         const hybrid = schedule("hybrid");
@@ -152189,9 +152227,9 @@ function sweepMatrix() {
         out.push({
           "полки %": load,
           "тариф ПВЗ": fee,
-          "экономия ₽": Math.round(mh.margin - md.margin),
+          "экономия ₽": md.margin===null||mh.margin===null ? null : Math.round(mh.margin - md.margin),
           "рейсов через ПВЗ": viaHub + " / " + hybrid.trips.length,
-          вердикт: mh.margin > md.margin ? "гибрид" : "СЦ",
+          вердикт: md.margin===null||mh.margin===null ? "недостаточно дорог" : mh.margin > md.margin ? "гибрид" : "СЦ",
         });
       }
     }
@@ -152199,7 +152237,7 @@ function sweepMatrix() {
     el("batch").value = saved.batch;
     el("flowSlider").value = saved.flow;
     el("truckCountSlider").value = saved.trucks;
-    CONFIG.hubPerBox[parcelSize] = saved.fee;
+    CONFIG.hubPerBox[size] = saved.fee;
     LOAD_OVERRIDE = saved.override;
   }
 
@@ -152282,11 +152320,13 @@ function applyPreset(key) {
   set("shelfSlider", p.shelf);
   set("storageDays", p.days);
 
+  volumes.small.forEach((v,i) => set(i===3 ? "kg" : "dim"+i, v));
+  el("bulkConsent").checked = false;
   el("stress").checked = false;
   // Городские кейсы работают в выбранном регионе. Для магистрали есть межгородской набор.
   if (key === "trunk") setGeo("intercity");
   else if (geoMode === "intercity") setGeo("local");
-  else updateParameters();
+  else refreshDestination();
 
   const cap = el("presetCaption");
   if (cap) cap.textContent = "Сценарий: " + p.label;
@@ -152299,7 +152339,6 @@ function applyPreset(key) {
 </script>
 <script>
 let geoMode = "local";
-let parcelSize = "small";
 let routeMode = "hybrid"; // 'direct' = СЦ 1 -> СЦ 2 -> Конечный ПВЗ; 'hybrid' = СЦ 1 -> Гибридный ПВЗ-склад -> Конечный ПВЗ
 let finalPvzId = "yo-1";
 let styleMode = "vector";
@@ -152313,7 +152352,7 @@ let activeChain = {
 };
 const el = (id) => document.getElementById(id),
   val = (id) => Number(el(id).value),
-  rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 1 }) + " ₽";
+  rub = (n) => n.toLocaleString("ru-RU", { maximumFractionDigits: 2 }) + " ₽";
 const nodeName = id => {
   const depot = Object.values(SC_NODES).find(p => p.id === id);
   return depot ? depot.label.replace(/\n/g, " · ") : cityById.get(id)?.name;
@@ -152325,6 +152364,7 @@ const volumes = {
   oversize: [90, 45, 40, 18],
 };
 const stock = new Map();
+let planIssue = "";
 let runs = {},
   previews = {},
   drawerOpen = false,
@@ -152535,22 +152575,41 @@ function plot(active = []) {
         .bindTooltip(
           leg.estimatedGeometry
             ? "Схематичное плечо без дорожного трека"
-            : "Дорожный трек OSM",
+            : (leg.source==="valhalla"?"Дорожный маршрут Valhalla":"Дорожный трек OSM"),
         )
         .addTo(roadsLayer);
     }
 }
+let mapContext={hubs:new Set(),handling:new Set(),reserved:new Map(),key:null};
+function updateMapContext(current,force=false) {
+  const reserve=new Map();
+  for(const v of runs[routeMode]?.book || []){
+    if(v.a<=elapsed && elapsed<v.b)reserve.set(v.id,(reserve.get(v.id)||0)+v.litres);
+  }
+  const shown=current.length?current:[previews[routeMode]].filter(Boolean);
+  const hubs=new Set([...reserve.keys(),...shown.filter(r=>r.hub).map(r=>r.hub.id)]);
+  const handling=new Set(current.filter(r=>r.hub && r.res.some(v=>v.work && v.a<=elapsed && elapsed<v.b)).map(r=>r.hub.id));
+  const key=JSON.stringify([routeMode,finalPvzId,shown.map(r=>[r.van,r.start,r.ids]),[...handling],[...reserve]]);
+  if(!force && mapContext.key===key)return;
+  mapContext={hubs,handling,reserved:reserve,key};
+  renderMarkers();
+  const final=cityById.get(finalPvzId);
+  if(final)renderLoadDetail(final,reserve.get(finalPvzId)||0);
+  if(!planIssue){
+    el("chainExplanation").textContent=current.length?current.map(r=>"Машина "+r.van+" · "+pathName(r)).join("\n"):
+      shown.length?"Пример партии · "+pathName(shown[0])+(shown[0].reason?" · "+shown[0].reason:""):"Нет рейса";
+  }
+}
 function renderMarkers() {
   markersLayer.clearLayers();
-  const { hubPvz, finalPvz } = activeChain;
 
   const visiblePvz = PVZ_LIST;
   const bounds = map.getBounds().pad(0.1);
   visiblePvz.forEach((pvz) => {
-    if (!bounds.contains(pvz.latlng) && pvz.id !== finalPvzId && pvz !== hubPvz) return;
-    const pct = calcLoadPct(pvz);
-    const isFinal = pvz.id === finalPvz.id;
-    const isHub = routeMode === "hybrid" && hubPvz && pvz.id === hubPvz.id;
+    if (!bounds.contains(pvz.latlng) && pvz.id !== finalPvzId && !mapContext.hubs.has(pvz.id)) return;
+    const pct = calcLoadPct(pvz,mapContext.reserved.get(pvz.id)||0);
+    const isFinal = pvz.id === finalPvzId;
+    const isHub = mapContext.hubs.has(pvz.id);
 
     let extraClass = "";
     let badgeText = `${pct}%`;
@@ -152572,11 +152631,11 @@ function renderMarkers() {
     const roleLabel = isFinal
       ? "КОНЕЧНЫЙ ПВЗ"
       : isHub
-        ? "ГИБРИДНЫЙ ПВЗ-СКЛАД"
+        ? (mapContext.handling.has(pvz.id)?"ПВЗ-СКЛАД · обработка партии":"ПВЗ-СКЛАД рейса")
         : "ПВЗ";
     const m = visiblePvz.length > 350 && !isFinal && !isHub
       ? L.circleMarker(pvz.latlng, {radius:5, color: pct > 80 ? "#bd354d" : "#7c3caa", renderer:pointRenderer})
-      : L.marker(pvz.latlng, {icon});
+      : L.marker(pvz.latlng, {icon, zIndexOffset:isFinal ? 650 : isHub ? 600 : 0});
     const tip = document.createElement("span");
     tip.textContent = roleLabel + " · " + pvz.name + " · модельная загрузка " + pct + "%";
     m.addTo(markersLayer).bindTooltip(tip, {direction:"top"});
@@ -152619,61 +152678,83 @@ function loadClass(pct) {
 function backgroundLoad(pvz) {
   if (LOAD_OVERRIDE !== null) return LOAD_OVERRIDE;
   if (el("stress").checked) return 99;
-  const demandLoad = Math.min(
-    99,
-    Math.round((effectiveLoad(pvz) * val("flowSlider")) / 100 + 10),
-  );
+  const demandLoad = Math.round(effectiveLoad(pvz) * val("flowSlider") / 100 + 10);
   return Math.max(5, Math.min(99, demandLoad + val("shelfSlider") - 100));
-}
-function calcLoadPct(pvz) {
-  return Math.min(100, backgroundLoad(pvz) + Math.ceil(inventory(pvz.id).litres / 3000 * 100));
 }
 const volume = () => (val("dim0") * val("dim1") * val("dim2")) / 1000;
 const inventory = (id) => stock.get(id) || { units: 0, litres: 0, fee: 0 };
-function room(p) {
+function calcLoadPct(pvz, reservedLitres=0) {
+  return Math.min(100, backgroundLoad(pvz) + Math.ceil((inventory(pvz.id).litres+reservedLitres) / CONFIG.shelfLitres * 100));
+}
+function room(p, reservedLitres=0) {
   const load = backgroundLoad(p);
   return {
-    litres: Math.max(0, (3000 * (100 - load)) / 100 - inventory(p.id).litres),
-    minutes: Math.max(0, (60 * (100 - load)) / 100 - 2),
+    litres: Math.max(0, CONFIG.shelfLitres * (100-load)/100 - inventory(p.id).litres-reservedLitres),
+    minutes: Math.max(0, 60 * (100-load)/100 - 2),
   };
 }
-function fits() {
-  return (
-    [val("dim0"), val("dim1"), val("dim2")]
-      .sort((a, b) => a - b)
-      .every((x, i) => x <= [50, 60, 120][i]) && val("kg") <= 25
-  );
+function boxFits(limits) {
+  const dims=[val("dim0"),val("dim1"),val("dim2")].sort((a,b)=>b-a);
+  return dims.every((x,i)=>Number.isFinite(x)&&x>0&&x<=limits[i])
+      && val("kg")>0 && val("kg")<=limits[3];
 }
+// The preset sizes are the upper inclusive bounds of each pilot tariff band.
+function parcelCategory() {
+  if(boxFits(volumes.small))return "small";
+  if(boxFits(volumes.medium))return "medium";
+  return "oversize";
+}
+function fits(){return boxFits([120,60,50,25])}
 function manifest() {
-  return Math.max(
-    0,
-    Math.min(
-      val("batch"),
-      Math.floor(6000 / volume()),
-      Math.floor(1000 / val("kg")),
-    ),
-  );
+  if (!Number.isSafeInteger(val("batch")) || val("batch") < 1 || !(volume()>0) || !(val("kg")>0)) return 0;
+  return Math.max(0,Math.min(val("batch"),Math.floor(6000/volume()),Math.floor(1000/val("kg"))));
+}
+
+// Half-open intervals: a shelf released at t is available for the next lot at t.
+function reservedAt(book,id,t){
+  return book.reduce((sum,v)=>sum+(v.id===id && v.a<=t && t<v.b ? v.litres : 0),0);
+}
+function canReserve(p, claims, book) {
+  const shelf=room(p);
+  const existing=book.filter(v=>v.id===p.id);
+  for(const claim of claims){
+    const overlaps=existing.filter(v=>v.a<claim.b && claim.a<v.b);
+    const starts=[claim.a,...overlaps.filter(v=>v.a>claim.a).map(v=>v.a)];
+    if(starts.some(t=>claim.litres + reservedAt(overlaps,p.id,t)>shelf.litres))return false;
+    if(!claim.work)continue;
+    if(overlaps.some(v=>v.work>0))return false;
+    const workers=[claim,...existing.filter(v=>v.work>0)];
+    for(let h=Math.floor(claim.a/60);h<Math.ceil(claim.b/60);h++){
+      const used=workers.reduce((sum,v)=>sum+Math.max(0,Math.min(v.b,60*(h+1))-Math.max(v.a,60*h)),0);
+      if(used>shelf.minutes+1e-8)return false;
+    }
+  }
+  return true;
 }
 
 </script>
 <script>
-function chain(mode, hub) {
+function chain(mode, hub, destination=finalPvzId) {
   let ids = ["sc-1"];
   if (mode === "direct") ids.push("sc-2");
   if (geoMode === "intercity") ids.push("sc-ch");
   if (hub) ids.push(hub.id);
-  ids.push(finalPvzId);
+  ids.push(destination);
   return ids;
 }
+function roadItinerary(ids,incident) {
+  return incident==="error" ? [...ids, ids.at(-2), ids.at(-1), "sc-1"] : [...ids,"sc-1"];
+}
+function hasItinerary(ids){return ids.slice(1).every((id,i)=>legOf(ids[i],id));}
 function customerTariff(km, n) {
-  return CONFIG.buyerBase[parcelSize] + (geoMode === "intercity" ? CONFIG.intercityFee : 0)
+  return CONFIG.buyerBase[parcelCategory()] + (geoMode === "intercity" ? CONFIG.intercityFee : 0)
     + Math.round(CONFIG.distanceShare * CONFIG.perKm * km / n);
 }
 function tariffLabel(mode) {
   const r = previews[mode];
   return r ? rub(r.price) : "—";
 }
-function trip(mode, hub, n, start, incident) {
+function trip(mode, hub, n, start, incident, days=0) {
   const ids = chain(mode, hub),
     phases = [],
     scans = [],
@@ -152687,10 +152768,9 @@ function trip(mode, hub, n, start, incident) {
     returned = 0,
     hubPay = 0;
   if (!ids.every((id) => nodeLatLng(id))) return null;
-  const required = ids.slice(1).map((b,i) => [ids[i], b]);
-  required.push([ids.at(-1), "sc-1"]);
-  if (incident === "error") required.push([ids.at(-1), ids.at(-2)]);
-  if (required.some(([a,b]) => !legOf(a,b))) return null;
+  if (!hasItinerary(roadItinerary(ids,incident))) return null;
+  const storageSite=days>0?(hub?.id||"sc-2"):null;
+  let pickup,openingLot;
   const charge = (label, price) => (rows[label] = (rows[label] || 0) + price);
   const scan = (id, text, delta = 0, back = 0) => {
     scans.push({ t, id, text, delta, back });
@@ -152716,12 +152796,18 @@ function trip(mode, hub, n, start, incident) {
     t += duration;
     km += leg.km;
   }
-  stop(ids[0], 25, "Приём и погрузка в СЦ 1");
-  charge("СЦ 1 · обработка", CONFIG.sc1PerBox * n);
-  scan(ids[0], "Передано водителю: " + n);
+  if(storageSite){
+    stop(ids[0],5,"Подготовка машины к забору запаса");
+    scan(ids[0],"Выезд за партией со склада");
+  }else{
+    stop(ids[0],25,"Приём и погрузка в СЦ 1");
+    charge("СЦ 1 · обработка", CONFIG.sc1PerBox*n);
+    scan(ids[0],"Передано водителю: "+n);
+  }
   for (let i = 1; i < ids.length; i++) {
     const id = ids[i];
     drive(ids[i - 1], id);
+    if(id===storageSite)pickup=t;
     if (i === ids.length - 1) {
       eta = t;
       outKm = km;
@@ -152731,10 +152817,10 @@ function trip(mode, hub, n, start, incident) {
     } else if (id === hub?.id) {
       let arrival = t,
         duration = 3 + n * 0.4;
-      stop(id, duration, "Приёмка, резерв полки и пересортировка");
+      stop(id, duration, storageSite ? "Отбор запаса, сканирование и погрузка" : "Приёмка, резерв полки и пересортировка");
       res.push({ id, a: arrival, b: t, litres: n * volume(), work: duration });
-      let fee = CONFIG.hubPerBox[parcelSize];
-      if (parcelSize === "oversize") {
+      let fee = CONFIG.hubPerBox[parcelCategory()];
+      if (parcelCategory() === "oversize") {
         charge("Габарит · выплата ПВЗ", CONFIG.bulk.hub * n);
         charge("Габарит · грузчики", CONFIG.bulk.loader * n);
         hubPay += CONFIG.bulk.hub * n;
@@ -152742,8 +152828,8 @@ function trip(mode, hub, n, start, incident) {
       hubPay += fee * n;
       charge("ПВЗ-хаб · обработка", fee * n);
       scan(id, "Принято и передано: " + n);
-    } else {
-      stop(id, 25, "Сортировка " + nodeName(id));
+    } else if(!storageSite || pickup!==undefined) {
+      stop(id, 25, id===storageSite ? "Отбор партии в СЦ со хранения" : "Сортировка " + nodeName(id));
       charge(
         id === "sc-2"
           ? "СЦ 2 · устранимые операции"
@@ -152751,6 +152837,12 @@ function trip(mode, hub, n, start, incident) {
         (id === "sc-2" ? CONFIG.sc2PerBox : CONFIG.scChPerBox) * n,
       );
       scan(id, "Отсканировано " + n);
+    }
+    if(id===storageSite){
+      const fee=CONFIG.storagePerBoxDay*n*days;
+      openingLot={id,units:n,litres:n*volume(),days,fee,receivedAt:-days*1440,releasedAt:t,pickup};
+      if(hub)res.unshift({id,a:openingLot.receivedAt,b:pickup,litres:openingLot.litres,work:0});
+      scan(id,"Списано с хранения и погружено: "+n+" шт.");
     }
   }
   let final = ids.at(-1),
@@ -152790,10 +152882,10 @@ function trip(mode, hub, n, start, incident) {
     CONFIG.finalPvzPerBox * n +
     (incident === "return" ? CONFIG.incidentFee : 0);
   const logistics = CONFIG.sellerPerBox * n,
-    storage = CONFIG.storagePerBoxDay * n * val("storageDays"),
+    storage = openingLot?.fee || 0,
     returns = incident === "return" ? CONFIG.returnHandling : 0;
   return {
-    eta,
+    eta, openingLot, pvzStorage: hub && openingLot ? storage : 0,
     referencePrice: price,
     discount: 0,
     premium: 0,
@@ -152824,135 +152916,100 @@ function trip(mode, hub, n, start, incident) {
     costs,
     income,
     margin: income - costs,
-    pvz: hubPay + pvzBase,
+    pvz: hubPay + pvzBase + (hub ? storage : 0),
     hub,
   };
 }
 
 </script>
 <script>
-function choose(mode, n, t, incident, book, baselineStart = t) {
-  const base = trip("direct", null, n, baselineStart, incident);
-  if (mode === "direct" || !base) return base;
-  let best,
-    overloaded = 0,
-    slaBlocked = 0,
-    capacityBlocked = 0;
-  if (parcelSize === "oversize" && !el("bulkConsent").checked) {
-    base.reason = "Габаритный гибрид требует согласия на доплату";
-    return base;
-  }
-  if (fits())
-    for (const p of hubPool) {
-      if (calcLoadPct(p) > CONFIG.network.maxLoadForHub) {
-        overloaded++;
-        continue;
-      }
-      let r = trip("hybrid", p, n, t, incident);
-      if (!r) continue;
-      const extra = base ? r.eta - base.eta : 0;
-      if (slaBreach(extra)) {
-        slaBlocked++;
-        continue;
-      }
-      r.referencePrice = base.price;
-      r.premium = parcelSize === "oversize" ? CONFIG.bulk.premium : 0;
-      r.discount = r.premium ? 0 : Math.floor(CONFIG.buyerSavingsShare * Math.max(0, base.costs - r.costs) / n);
-      r.price = Math.max(0, r.referencePrice + r.premium - r.discount);
-      r.income = r.price * (r.issued - r.returned);
-      r.compPerOrder = Math.min(r.price, slaCompensation(extra));
-      r.price -= r.compPerOrder;
-      r.comp = r.compPerOrder * (r.issued - r.returned);
-      r.income -= r.comp;
-      r.margin = r.income - r.costs;
-      let v = r.res[0],
-        available = room(p);
-      const overlaps = book.filter(
-        (x) => x.id === p.id && x.b > v.a && x.a < v.b,
-      );
-      if (
-        available.litres < v.litres ||
-        overlaps.length ||
-        v.work > available.minutes
-      ) {
-        capacityBlocked++;
-        continue;
-      }
-      let feasible = true;
-      for (
-        let hour = Math.floor(v.a / 60);
-        hour <= Math.floor(v.b / 60);
-        hour++
-      ) {
-        let work = [...book.filter((x) => x.id === p.id), v].reduce(
-          (sum, x) =>
-            sum +
-            Math.max(
-              0,
-              Math.min(x.b, 60 * (hour + 1)) - Math.max(x.a, 60 * hour),
-            ),
-          0,
-        );
-        if (work > available.minutes) feasible = false;
-      }
-      if (!feasible) capacityBlocked++;
-      if (feasible && (!best || r.margin > best.margin)) best = r;
-    }
-  if (best && (!base || best.margin >= base.margin)) return best;
-  if (!base) return null;
-  base.reason = !fits() ? "Упаковка превышает допустимые параметры пилота" : best
-    ? "Через СЦ выгоднее для WB"
-    : [
-        overloaded && "Загрузка выше " + CONFIG.network.maxLoadForHub + "%",
-        slaBlocked && "Превышен допуск SLA",
-        capacityBlocked && "Не хватает полки или времени персонала",
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Нет доступного дорожного маршрута через хаб";
-  base.canWait = capacityBlocked > 0;
-  return base;
+function priceHybrid(r, base) {
+  const paid = r.issued - r.returned;
+  r.referencePrice = base.price;
+  r.premium = parcelCategory() === "oversize" ? CONFIG.bulk.premium : 0;
+  r.discount = r.premium ? 0 : Math.floor(CONFIG.buyerSavingsShare * Math.max(0, base.costs-r.costs) / r.n);
+  const quoted = Math.max(0,base.price+r.premium-r.discount);
+  r.compPerOrder = Math.min(quoted,slaCompensation(r.eta-base.eta));
+  r.price = quoted-r.compPerOrder;
+  r.comp = r.compPerOrder*paid;
+  r.income = r.price*paid;
+  r.margin = r.income-r.costs;
 }
+
+function choose(mode,n,t,incident,book,baselineStart=t,deadline=Infinity,days=0) {
+  const base = trip("direct",null,n,baselineStart,incident,days);
+  if(!base)return null;
+  const control = base.end <= deadline ? base : null;
+  if(mode==="direct")return control;
+  if(!fits() || (parcelCategory()==="oversize" && !el("bulkConsent").checked)){
+    base.reason = !fits() ? "Упаковка превышает допуски ячейки" : "Габаритный гибрид требует согласия на доплату";
+    return control;
+  }
+
+  const reasons=new Set();
+  let best,maxFree=0;
+  for(const p of hubPool){
+    const r=trip("hybrid",p,n,t,incident,days);
+    if(!r)continue;
+    if(r.end>deadline){reasons.add("Возврат машины после смены");continue;}
+    const arrival=r.res.find(v=>v.work>0).a;
+    const occupied=reservedAt(book,p.id,arrival);
+    const free=room(p,occupied).litres;
+    maxFree=Math.max(maxFree,free);
+    if(calcLoadPct(p,occupied)>CONFIG.network.maxLoadForHub){reasons.add("Загрузка выше "+CONFIG.network.maxLoadForHub+"%");continue;}
+    if(n*volume()>free){reasons.add("Мало места");continue;}
+    if(!canReserve(p,r.res,book)){reasons.add("Резерв полки или смена сотрудника заняты");continue;}
+    if(slaBreach(r.eta-base.eta)){reasons.add("Превышен допуск SLA");continue;}
+    if(r.pvzHub+r.pvzStorage < hubLabour(r)){reasons.add("Выплата хабу ниже затрат на труд");continue;}
+    priceHybrid(r,base);
+    if(!best || r.margin>best.margin || (r.margin===best.margin && r.end<best.end))best=r;
+  }
+  // A late classical round trip is still a valid price/SLA reference, but is not dispatchable.
+  if(best && (control ? best.margin>=base.margin : best.margin>=0))return best;
+  base.canWait = reasons.has("Резерв полки или смена сотрудника заняты") || (reasons.has("Мало места") && book.length>0);
+  if(reasons.delete("Мало места"))reasons.add("Партия "+n+" шт. занимает "+(n*volume()).toLocaleString("ru-RU")+" л, максимум свободно "+Math.floor(maxFree).toLocaleString("ru-RU")+" л");
+  base.reason = best ? "Через СЦ выгоднее для WB" : [...reasons].join(" · ") || "Нет подтверждённой дороги через доступный хаб";
+  return control;
+}
+
 function schedule(mode) {
-  const rate = (140 * val("flowSlider")) / 100 / 60,
-    demand = Math.floor(rate * CONFIG.shiftMinutes),
-    fleet = Array(val("truckCountSlider")).fill(0),
-    book = [],
-    trips = [];
-  let sent = 0;
-  while (sent < demand) {
-    const n = Math.min(manifest(), demand - sent);
-    if (!n) break;
-    let v = fleet.indexOf(Math.min(...fleet)),
-      t = Math.max(fleet[v], (sent + n) / rate);
-    const incident = !trips.length ? el("incident").value : "none";
-    let r = choose(mode, n, t, incident, book);
-    if (mode === "hybrid" && r?.mode === "direct" && r.canWait) {
-      for (const delay of [15, 30]) {
-        const alt = choose(mode, n, t + delay, incident, book, t);
-        if (alt?.mode === "hybrid" && alt.end <= CONFIG.shiftMinutes) {
-          r = alt;
-          break;
-        }
+  const rate=140*val("flowSlider")/100/60;
+  const demand=Math.floor(rate*CONFIG.shiftMinutes);
+  const book=[],trips=[],fleet=Array(val("truckCountSlider")).fill(0);
+  const firstIncident=el("incident").value;
+  const missingRoads=!hasItinerary(roadItinerary(chain("direct",null),firstIncident));
+  let sent=0;
+  while(!missingRoads && sent<demand){
+    const n=Math.min(manifest(),demand-sent);
+    if(!n)break;
+    const van=fleet.indexOf(Math.min(...fleet));
+    const ready=(sent+n)/rate, start=Math.max(fleet[van],ready);
+    const incident=sent===0 ? firstIncident : "none";
+    const days=sent===0 ? val("storageDays") : 0;
+    let r=choose(mode,n,start,incident,book,start,CONFIG.shiftMinutes,days);
+    if(mode==="hybrid" && (!r || (r.mode==="direct" && r.canWait))){
+      for(const delay of [15,30]){
+        const alt=choose(mode,n,start+delay,incident,book,start,CONFIG.shiftMinutes,days);
+        if(alt?.mode==="hybrid"){r=alt;break;}
       }
     }
-    if (r?.mode === "hybrid" && r.end > CONFIG.shiftMinutes)
-      r = choose("direct", n, t, incident, book);
-    if (!r || r.end > CONFIG.shiftMinutes) break;
-    r.ready = (sent + n) / rate;
-    r.van = v + 1;
-    fleet[v] = r.end;
-    sent += n;
-    book.push(...r.res);
-    trips.push(r);
+    if(!r)break;
+    r.ready=ready; r.van=van+1;
+    fleet[van]=r.end; sent+=n;
+    book.push(...r.res); trips.push(r);
   }
-  return { trips, demand };
+  return {trips,demand,book,missingRoads};
 }
+
+function hubLabour(r){return r.res.reduce((sum,v)=>sum+v.work*CONFIG.hubWorkPerMin,0);}
+
 function metrics(mode, t, run = runs[mode]) {
   let issued = 0,
     back = 0,
     pvz = 0,
     pvzBase = 0,
     pvzHub = 0,
+    pvzStorage = 0,
     comp = 0,
     margin = 0,
     finished = 0;
@@ -152963,9 +153020,12 @@ function metrics(mode, t, run = runs[mode]) {
         issued += s.delta;
         back += s.back;
       }
+    if(r.pvzStorage && r.openingLot.releasedAt<=t){
+      pvzStorage+=r.pvzStorage; pvz+=r.pvzStorage;
+    }
     if (r.end <= t) {
       finished++;
-      pvz += r.pvz;
+      pvz += r.pvz-r.pvzStorage;
       pvzBase += r.pvzBase;
       pvzHub += r.pvzHub;
       comp += r.comp;
@@ -152978,8 +153038,9 @@ function metrics(mode, t, run = runs[mode]) {
     pvz,
     pvzBase,
     pvzHub,
+    pvzStorage,
     comp,
-    margin: margin - (CONFIG.shiftFixed * t) / CONFIG.shiftMinutes,
+    margin: run.missingRoads ? null : margin - (CONFIG.shiftFixed * t) / CONFIG.shiftMinutes,
     finished,
   };
 }
@@ -153042,8 +153103,9 @@ function econTable() {
   row("Компенсация покупателю (SLA) / оплаченный заказ", (r) =>
     rub(r.compPerOrder),
   );
-  row("ПВЗ-хаб · вклад после труда, до аренды", r => rub((r.pvzHub -
-    r.res.reduce((s,v) => s + v.work * CONFIG.hubWorkPerMin, 0)) / r.n));
+  row("ПВЗ-хаб · хранение за счёт продавца", r => rub(r.pvzStorage / r.n));
+  row("ПВЗ-хаб · вклад после оплаты труда, до аренды",
+    r => rub((r.pvzHub + r.pvzStorage - hubLabour(r)) / r.n));
   row("Продавец · хранение", r => rub(r.seller.storage / r.n));
   row("Продавец · остаток от продажи после логистики", r =>
     rub((CONFIG.sellerGrossPerSale * (r.issued-r.returned) - r.seller.total) / r.n));
@@ -153057,6 +153119,7 @@ function econTable() {
   return view;
 }
 function report() {
+  if(planIssue){const message=document.createElement("p");message.className="plan-message";message.textContent=planIssue;return message;}
   const view = el("shift-view").content.cloneNode(true);
   const classic = metrics("direct", CONFIG.shiftMinutes),
     hybrid = metrics("hybrid", CONFIG.shiftMinutes);
@@ -153094,6 +153157,17 @@ function report() {
       reason += " Обе схемы убыточны при заданных ставках.";
   }
 
+  const coverage=coverageFor(el("incident").value);
+  if (coverage.complete < coverage.chains.length) {
+    const noHybridRoad=coverageFor("none").complete === 1;
+    const eligible=hubPool.some(p => calcLoadPct(p)<=CONFIG.network.maxLoadForHub && room(p).litres>=manifest()*volume());
+    if(noHybridRoad && eligible && fits() && (parcelCategory()!=="oversize" || el("bulkConsent").checked)){
+      title="Недостаточно дорожных данных для сравнения с ПВЗ-хабом";
+      reason="В обеих колонках показаны фактически доступные рейсы через СЦ. Обновите дороги для оценки альтернативы.";
+    } else {
+      reason+=" Сравнение охватывает дорожные цепочки с подтверждённым треком ("+coverage.complete+" из "+coverage.chains.length+" для первого рейса).";
+    }
+  }
   view.querySelector("h3").textContent = title;
   view.querySelector(".recommendation p").textContent = reason;
   for (const [key, m] of [
@@ -153114,6 +153188,7 @@ function report() {
       demand,
       m.issued + " / " + m.back,
       demand - m.issued,
+      rub(m.pvzStorage),
       rub(m.margin),
     ]);
   }
@@ -153141,7 +153216,7 @@ function report() {
 function renderAnalyticsDrawer() {
   el("drawerSubtitle").textContent =
     "Сравнение при одинаковом спросе и парке машин";
-  el("drawerBodyContent").replaceChildren(econTable(), report());
+  el("drawerBodyContent").replaceChildren(...(planIssue ? [report()] : [econTable(),report()]));
 }
 function toggleAnalyticsDrawer() {
   drawerOpen = !drawerOpen;
@@ -153153,11 +153228,12 @@ function openSummaryModal() {
   el("summaryTopKpis").replaceChildren(report());
   const body = el("summaryTable").tBodies[0];
   body.replaceChildren();
-  for (const [key, r] of Object.entries(previews))
+  el("summaryTable").hidden=Boolean(planIssue);
+  if(!planIssue)for (const [key, r] of Object.entries(previews))
     addRow(body, [
       key === "direct" ? "Классика" : "Гибрид",
       r ? pathName(r) : "Доставка недоступна",
-      tariffLabel(key),
+      r ? rub(r.referencePrice) : "—",
       r ? rub(r.price) : "—",
     ]);
   el("summaryModal").classList.add("open");
@@ -153168,7 +153244,20 @@ function closeSummaryModal() {
 
 </script>
 <script>
-function updateClock() {
+function renderOpeningLot(){
+  const lot=runs[routeMode]?.trips[0]?.openingLot;
+  el("storedLot").hidden=!val("storageDays");
+  if(!val("storageDays"))return;
+  el("showStoragePickup").disabled=!lot;
+  if(!lot){el("lotLedger").textContent="Партия со хранения не назначена на эту смену.";return;}
+  const released=elapsed>=lot.releasedAt;
+  el("lotLedger").textContent="День −"+lot.days+": продавец передал "+lot.units+" шт. ("+lot.litres.toLocaleString("ru-RU")+" л) в "+nodeName(lot.id)+
+    ". Хранение: "+lot.units+" × "+lot.days+" × "+rub(CONFIG.storagePerBoxDay)+" = "+rub(lot.fee)+
+    ". Сейчас на полке "+(released?"0 шт.":lot.units+" шт.")+". "+
+    (released?"Партия отгружена. Продавец оплачивает "+rub(lot.fee)+". Получатель — "+nodeName(lot.id)+".":"Отгрузка и расчёт за хранение на "+Math.ceil(lot.releasedAt)+"-й минуте смены.");
+}
+function updateClock(force=false) {
+  if(planIssue || !runs[routeMode])return;
   for (const m of markers.values()) m.remove();
   markers.clear();
   let text = "",
@@ -153210,7 +153299,7 @@ function updateClock() {
         className: "",
         html: "🚚",
         iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        iconAnchor: p.leg ? [12, 12] : [12, 35],
       }),
       zIndexOffset: 900,
     })
@@ -153224,18 +153313,18 @@ function updateClock() {
   el("stDelivered").textContent = m.issued;
   el("stActiveTrucks").textContent = current.length;
   el("stMpSaved").textContent = rub(m.margin - classic.margin);
-  el("stPvzEarned").textContent = rub(m.pvzHub);
+  el("stPvzEarned").textContent = rub(m.pvzHub + m.pvzStorage);
   el("simClock").textContent =
     "Смена " +
     Math.floor(elapsed / 60) +
     ":" +
     String(Math.floor(elapsed % 60)).padStart(2, "0");
-  const reserved = current
-    .flatMap((r) => r.res.filter((v) => v.a <= elapsed && elapsed < v.b))
-    .reduce((s, v) => s + v.litres, 0);
+  const reserved = runs[routeMode].book
+    .filter(v => v.a <= elapsed && elapsed < v.b)
+    .reduce((s,v) => s + v.litres, 0);
   el("liveLog").innerText =
     (text || "Ожидание следующего рейса") +
-    " · резерв в кросс-докинге " +
+    " · партии на полках ПВЗ " +
     reserved +
     " л\n" +
     log
@@ -153245,6 +153334,9 @@ function updateClock() {
       .join("\n");
   el("scrub").value = elapsed;
   plot(current);
+  updateMapContext(current,force);
+  renderOpeningLot();
+  el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {
   playing = false;
@@ -153268,6 +153360,7 @@ function animate(now) {
   else frame = requestAnimationFrame(animate);
 }
 function toggleSimulation() {
+  if(planIssue||!validateInputs())return;
   if (playing) return stopClock();
   if (elapsed >= CONFIG.shiftMinutes) elapsed = 0;
   playing = true;
@@ -153278,123 +153371,127 @@ function toggleSimulation() {
 
 </script>
 <script>
-function storeAction(action) {
-  const id = el("stockPoint").value,
-    entry = inventory(id),
-    unit = volume();
-  let msg = "";
-  if (action === "receive") {
-    if (
-      entry.units ||
-      !fits() ||
-      room(PVZ_LIST.find((x) => x.id === id)).litres < unit * 10
-    )
-      msg =
-        "Отказ: партия уже на полке, недостаточно места или превышены габариты.";
-    else Object.assign(entry, { units: 10, litres: 10 * unit, unit });
-  }
-  if (action === "sell" && entry.units >= 2) {
-    entry.units -= 2;
-    entry.litres = entry.units * entry.unit;
-  }
-  if (action === "day") entry.fee += entry.units * CONFIG.storagePerBoxDay;
-  stock.set(id, entry);
-  updateParameters();
-  el("stockStatus").textContent += msg;
+const numericFields=["batch","dim0","dim1","dim2","kg","storageDays"];
+const fieldNames={batch:"Заказов в партии",dim0:"Длина",dim1:"Ширина",dim2:"Высота",kg:"Масса",storageDays:"Сутки хранения"};
+const sizeNames={small:"малая",medium:"средняя",oversize:"габаритная"};
+
+function renderManualStock(message=""){
+  const item=inventory(el("stockPoint").value);
+  el("stockStatus").textContent="Остаток "+item.units+" шт. · "+item.litres.toLocaleString("ru-RU")+" л · начислено ПВЗ за счёт продавца "+rub(item.fee)+". "+message;
 }
-function updateParameters() {
-  const next = candidatePoints();
-  if (next.length !== hubPool.length || next.some((p,i) => hubPool[i] !== p)) refreshDestination();
+function storeAction(action){
+  if(!validateInputs())return;
+  const id=el("stockPoint").value, point=cityById.get(id);
+  if(!point)return;
+  const entry={...inventory(id)},unit=volume();
+  if(action==="receive"){
+    const claimed=reservedAt(runs[routeMode]?.book||[],id,elapsed);
+    if(entry.units||!fits()||unit*10>room(point,claimed).litres){
+      renderManualStock("Отказ: проверьте остаток, габариты и доступный объём полки.");return;
+    }
+    Object.assign(entry,{units:10,litres:10*unit,unit});
+  }else if(action==="sell" && entry.units>=2){
+    entry.units-=2;entry.litres=entry.units*entry.unit;
+  }else if(action==="day"){
+    entry.fee+=entry.units*CONFIG.storagePerBoxDay;
+  }else return;
+  stock.set(id,entry);updateParameters();
+}
+
+function setUnavailable(message){
+  stopClock();elapsed=0;planIssue=message;
+  runs={};previews={direct:null,hybrid:null};
+  activeChain.hubPvz=null;
+  el("planStatus").hidden=false;
+  el("planStatus").textContent=message;
+  el("btnToggleSim").disabled=true;el("scrub").disabled=true;
+  el("scrub").value=0;el("simClock").textContent="Смена —";
+  for(const id of ["stDelivered","stActiveTrucks","stMpSaved","stPvzEarned","mDirectKm","mHybridKm","priceDirect","priceHybrid"])
+    el(id).textContent="—";
+  el("truckLegStatus").textContent="Ожидание расчёта";
+  el("liveLog").textContent="";el("chainExplanation").textContent=message;
+  el("metaHybrid").textContent="Расчёт приостановлен";el("costSplitCard").replaceChildren();
+  el("storedLot").hidden=true;
+  trucksLayer.clearLayers();markers.clear();plot([]);updateMapContext([],true);
+  if(drawerOpen)renderAnalyticsDrawer();
+  if(el("summaryModal").classList.contains("open"))openSummaryModal();
+}
+
+function validateInputs(){
+  const invalid=numericFields.find(id=>!el(id).checkValidity()||!Number.isFinite(val(id)));
+  if(invalid || !Number.isSafeInteger(val("batch")) || !Number.isSafeInteger(val("storageDays")*1440)){
+    const id=invalid||(!Number.isSafeInteger(val("batch"))?"batch":"storageDays");
+    setUnavailable("Проверьте поле «"+fieldNames[id]+"». Результаты предыдущего расчёта устарели.");
+    return false;
+  }
+  return true;
+}
+function updateParameters(){
+  if(!validateInputs())return;
+  const next=candidatePoints();
+  if(next.length!==hubPool.length||next.some((p,i)=>p!==hubPool[i]))refreshDestination();
   else recalculateAll();
 }
-function recalculateAll() {
-  for (const id of ["batch", "dim0", "dim1", "dim2", "kg", "storageDays"]) {
-    let f = el(id);
-    if (!f.reportValidity()) {
-      stopClock();
-      return;
-    }
-  }
-  stopClock();
-  el("bulkConsentRow").hidden = parcelSize !== "oversize";
-  elapsed = 0;
-  const final = PVZ_LIST.find((p) => p.id === finalPvzId);
-  activeChain.finalPvz = final;
-  let n = manifest();
-  for (let mode of ["direct", "hybrid"]) {
-    previews[mode] = n ? choose(mode, n, 0, el("incident").value, []) : null;
-    runs[mode] = schedule(mode);
-  }
-  const r = previews[routeMode],
-    h = previews.hybrid;
-  activeChain.hubPvz = h?.hub;
-  activeChain.directKm = previews.direct?.outKm;
-  activeChain.hybridKm = h?.outKm;
-  el("headerSubStatus").textContent =
-    "Диспетчер WB · модель смены · координаты СЦ сценарные";
-  el("mDirectKm").textContent = previews.direct
-    ? previews.direct.outKm.toFixed(2) + " км"
-    : "—";
-  el("mHybridKm").textContent = h ? h.outKm.toFixed(2) + " км" : "—";
-  el("mFinalLoad").textContent = calcLoadPct(final) + "%";
-  const {counts,nearest} = neighborhood;
-  const available = room(final);
-  el("loadDetail").textContent = "В 1,6 км от выбранного ПВЗ: WB " + counts.wb + ", Ozon " +
-    counts.ozon + ", Яндекс Маркет " + counts.ym + ". Ближайший сосед: " +
-    (Number.isFinite(nearest) ? Math.round(nearest) + " м" : "нет в справочнике") +
-    ". Модельная загрузка " + calcLoadPct(final) + "%, свободно " + Math.round(available.litres) + " л.";
-  el("priceDirect").textContent = tariffLabel("direct");
-  el("priceHybrid").textContent = tariffLabel("hybrid");
-  el("metaHybrid").textContent = !h
-    ? "Доставка недоступна"
-    : h.mode === "direct"
-      ? "Эта партия поедет через СЦ за " +
-        rub(h.price) +
-        " / заказ. " +
-        h.reason +
-        "."
-      : "К оплате с учётом SLA: " + rub(h.price) + " / заказ.";
-  el("chainExplanation").textContent = r
-    ? pathName(r) + (r.reason ? " · " + r.reason : "")
-    : "Недостаточная вместимость или дорожный маршрут недоступен";
-  el("costSplitCard").replaceChildren(econTable());
-  el("ordersCountLabel").textContent =
-    Math.round((140 * val("flowSlider")) / 100) + " зак/ч";
-  el("shelfValue").textContent = val("shelfSlider") - 100 + " п.п.";
-  el("flowLabel").textContent = val("flowSlider") / 100 + "×";
-  el("truckCountLabel").textContent = val("truckCountSlider");
-  for (const [id, m] of [
-    ["optDirect", "direct"],
-    ["optHybrid", "hybrid"],
-  ])
-    el(id).classList.toggle("active", m === routeMode);
-  const inv = inventory(el("stockPoint").value);
-  el("stockStatus").textContent =
-    "Остаток " +
-    inv.units +
-    " шт. · " +
-    inv.litres +
-    " л · начислено ПВЗ за счёт продавца " +
-    rub(inv.fee) +
-    ". ";
-  renderMarkers();
-  plot();
-  updateClock();
-  if (drawerOpen) renderAnalyticsDrawer();
+
+function renderLoadDetail(final, reserved=0){
+  const profile=summarizeNeighborhood(final),counts=profile.counts;
+  const {radius,perKm2}=profile;
+  const effective=competitionIndex(final);
+  el("mFinalLoad").textContent=calcLoadPct(final,reserved)+"%";
+  el("loadDetail").textContent="В радиусе "+(radius/1000).toLocaleString("ru-RU")+" км: WB "+counts.wb+", Ozon "+counts.ozon+", Яндекс Маркет "+counts.ym+
+    " · "+perKm2.toLocaleString("ru-RU",{maximumFractionDigits:1})+" точек/км². Индекс с учётом расстояния и бренда: "+effective.toLocaleString("ru-RU",{maximumFractionDigits:2})+
+    ". Фоновая загрузка "+backgroundLoad(final)+"%, свободно "+Math.floor(room(final,reserved).litres).toLocaleString("ru-RU")+" л. Источник точки: "+final.origin+". При одинаковом районном спросе соседи делят поток заказов.";
 }
 
-function populateSelect() {
-  const list = PVZ_LIST;
-  el("finalPvzSelect").replaceChildren(
-    ...list.map(
-      (p) => new Option("Конечный ПВЗ (" + p.city + "): " + p.name, p.id),
-    ),
-  );
-
-  if (!list.some((p) => p.id === finalPvzId)) {
-    finalPvzId = list[0].id;
+function recalculateAll(){
+  if(!validateInputs())return;
+  stopClock();elapsed=0;
+  const final=cityById.get(finalPvzId);
+  activeChain.finalPvz=final;
+  const size=parcelCategory(), consent=el("bulkConsent");
+  if(size!=="oversize")consent.checked=false;
+  el("bulkConsentRow").hidden=size!=="oversize";
+  el("packageClass").textContent=sizeNames[size];
+  for(const button of document.querySelectorAll("[data-size]"))button.classList.toggle("active",button.dataset.size===size);
+  el("headerSubStatus").textContent="Диспетчер WB · модель смены · координаты СЦ сценарные";
+  el("ordersCountLabel").textContent=Math.round(140*val("flowSlider")/100)+" зак/ч";
+  el("shelfValue").textContent=(val("shelfSlider")-100)+" п.п.";
+  el("flowLabel").textContent=val("flowSlider")/100+"×";
+  el("truckCountLabel").textContent=val("truckCountSlider");
+  renderManualStock();renderLoadDetail(final);
+  const n=manifest(),incident=el("incident").value;
+  if(!n){setUnavailable("Партия не помещается в машину. Проверьте размеры и массу.");return;}
+  if(!hasItinerary(roadItinerary(chain("direct",null),incident))){
+    setUnavailable("Недостаточно дорожных данных. Для этого адреса нет полной цепочки через СЦ. Обновите дороги или выберите адрес из группы «Через СЦ офлайн».");return;
   }
-  document.getElementById("finalPvzSelect").value = finalPvzId;
+  planIssue="";
+  el("planStatus").hidden=true;el("btnToggleSim").disabled=false;el("scrub").disabled=false;
+  for(const mode of ["direct","hybrid"]){
+    previews[mode]=choose(mode,n,0,incident,[],0,Infinity,val("storageDays"));
+    runs[mode]=schedule(mode);
+  }
+  const h=previews.hybrid,d=previews.direct;
+  activeChain.hubPvz=h?.hub;
+  activeChain.directKm=d?.outKm;activeChain.hybridKm=h?.outKm;
+  el("mDirectKm").textContent=d?d.outKm.toFixed(2)+" км":"—";
+  el("mHybridKm").textContent=h?h.outKm.toFixed(2)+" км":"—";
+  el("metaDirect").textContent=d?.openingLot ? "Первая партия ожидает на СЦ 2. Машина выезжает из СЦ 1 за запасом." : "Обработка партии на СЦ 1 и СЦ 2.";
+  el("priceDirect").textContent=tariffLabel("direct");el("priceHybrid").textContent=tariffLabel("hybrid");
+  el("metaHybrid").textContent=!h?"Недостаточно дорожных данных":h.mode==="direct"?"Через СЦ за "+rub(h.price)+" / заказ. "+h.reason+".":
+    h.premium ? "Тариф СЦ "+rub(h.referencePrice)+" + доплата "+rub(h.premium)+(h.compPerOrder?" − компенсация "+rub(h.compPerOrder):"")+" = "+rub(h.price)+" / заказ." : "К оплате с учётом скидки и SLA: "+rub(h.price)+" / заказ.";
+  el("costSplitCard").replaceChildren(econTable());
+  updateClock(true);
+  if(drawerOpen)renderAnalyticsDrawer();
+  if(el("summaryModal").classList.contains("open"))openSummaryModal();
+}
+
+function populateSelect(){
+  const local=document.createElement("optgroup"), online=document.createElement("optgroup");
+  local.label="Через СЦ офлайн · "+savedDestinations.size;
+  online.label="Остальные адреса · дороги по сети";
+  for(const p of PVZ_LIST)(savedDestinations.has(p.id)?local:online).append(new Option(p.name,p.id));
+  el("finalPvzSelect").replaceChildren(...[local,online].filter(g=>g.children.length));
+  el("finalPvzSelect").value=finalPvzId;
 }
 
 function onFinalPvzChange() {
@@ -153406,25 +153503,17 @@ function setGeo(g) {
   configureRegion(g === "intercity" ? "cheboksary" : "yoshkar-ola");
 }
 
-function setSize(sz) {
-  parcelSize = sz;
-  volumes[sz].forEach((v, i) => (el(i === 3 ? "kg" : "dim" + i).value = v));
-  document
-    .querySelectorAll("#sizeGroup .seg-btn")
-    .forEach((b) => b.classList.toggle("active", b.dataset.size === sz));
-  recalculateAll();
+function setSize(size) {
+  volumes[size].forEach((v,i)=>el(i===3?"kg":"dim"+i).value=v);
+  updateParameters();
 }
 
-function setRouteMode(rm) {
-  if (!["direct", "hybrid"].includes(rm)) return;
-  routeMode = rm;
-  document
-    .getElementById("optDirect")
-    .classList.toggle("active", rm === "direct");
-  document
-    .getElementById("optHybrid")
-    .classList.toggle("active", rm === "hybrid");
-  recalculateAll();
+function setRouteMode(mode) {
+  if(!["direct","hybrid"].includes(mode))return;
+  routeMode=mode;
+  for(const [id,key] of [["optDirect","direct"],["optHybrid","hybrid"]])
+    el(id).classList.toggle("active",key===routeMode);
+  if(!planIssue)updateClock(true);
 }
 
 function setStyleMode(m) {
@@ -153468,22 +153557,17 @@ for (const button of document.querySelectorAll("[data-size]"))
   button.addEventListener("click", () => setSize(button.dataset.size));
 for (const button of document.querySelectorAll("[data-stock]"))
   button.addEventListener("click", () => storeAction(button.dataset.stock));
-for (const id of [
-  "storageDays",
-  "bulkConsent",
-  "useCompetition",
-  "batch",
-  "dim0",
-  "dim1",
-  "dim2",
-  "kg",
-  "stress",
-  "incident",
-  "stockPoint",
-])
+for (const id of ["bulkConsent", "useCompetition", "stress"])
   el(id).addEventListener("change", updateParameters);
-for (const id of ["truckCountSlider", "flowSlider", "shelfSlider"])
+el("stockPoint").addEventListener("change", () => renderManualStock());
+for (const id of [...numericFields, "truckCountSlider", "flowSlider", "shelfSlider"])
   el(id).addEventListener("input", updateParameters);
+el("incident").addEventListener("change", refreshDestination);
+el("showStoragePickup").addEventListener("click",()=>{
+  const lot=runs[routeMode]?.trips[0]?.openingLot;
+  if(!lot||planIssue)return;
+  stopClock();elapsed=lot.releasedAt;updateClock();
+});
 el("scrub").addEventListener("input", (event) => {
   stopClock();
   elapsed = Number(event.target.value);
@@ -153508,15 +153592,20 @@ let importNumber = 0;
 el("regionFile").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
+  const request = ++catalogGeneration;
+  citySearch?.abort();
   try {
-    const catalog = validateCatalog(JSON.parse(await file.text()));
+    const contents = await file.text();
+    if (request !== catalogGeneration) return;
+    const catalog = validateCatalog(JSON.parse(contents));
     const key = "import-" + (++importNumber);
-    REGION_CATALOGS[key] = catalog;
-    regionOptions();
-    configureRegion(key);
+    configureRegion(key,catalog);
     el("importStatus").textContent = "Загружен регион " + catalog.city;
-  } catch (error) { el("importStatus").textContent = error.message; }
-  e.target.value = "";
+  } catch (error) {
+    if (request === catalogGeneration) el("importStatus").textContent = error.message;
+  } finally {
+    if (e.target.files[0] === file) e.target.value = "";
+  }
 });
 map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
 configureRegion("yoshkar-ola");

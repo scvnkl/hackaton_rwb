@@ -1,4 +1,17 @@
-function updateClock() {
+function renderOpeningLot(){
+  const lot=runs[routeMode]?.trips[0]?.openingLot;
+  el("storedLot").hidden=!val("storageDays");
+  if(!val("storageDays"))return;
+  el("showStoragePickup").disabled=!lot;
+  if(!lot){el("lotLedger").textContent="Партия со хранения не назначена на эту смену.";return;}
+  const released=elapsed>=lot.releasedAt;
+  el("lotLedger").textContent="День −"+lot.days+": продавец передал "+lot.units+" шт. ("+lot.litres.toLocaleString("ru-RU")+" л) в "+nodeName(lot.id)+
+    ". Хранение: "+lot.units+" × "+lot.days+" × "+rub(CONFIG.storagePerBoxDay)+" = "+rub(lot.fee)+
+    ". Сейчас на полке "+(released?"0 шт.":lot.units+" шт.")+". "+
+    (released?"Партия отгружена. Продавец оплачивает "+rub(lot.fee)+". Получатель — "+nodeName(lot.id)+".":"Отгрузка и расчёт за хранение на "+Math.ceil(lot.releasedAt)+"-й минуте смены.");
+}
+function updateClock(force=false) {
+  if(planIssue || !runs[routeMode])return;
   for (const m of markers.values()) m.remove();
   markers.clear();
   let text = "",
@@ -40,7 +53,7 @@ function updateClock() {
         className: "",
         html: "🚚",
         iconSize: [24, 24],
-        iconAnchor: [12, 12],
+        iconAnchor: p.leg ? [12, 12] : [12, 35],
       }),
       zIndexOffset: 900,
     })
@@ -54,18 +67,18 @@ function updateClock() {
   el("stDelivered").textContent = m.issued;
   el("stActiveTrucks").textContent = current.length;
   el("stMpSaved").textContent = rub(m.margin - classic.margin);
-  el("stPvzEarned").textContent = rub(m.pvzHub);
+  el("stPvzEarned").textContent = rub(m.pvzHub + m.pvzStorage);
   el("simClock").textContent =
     "Смена " +
     Math.floor(elapsed / 60) +
     ":" +
     String(Math.floor(elapsed % 60)).padStart(2, "0");
-  const reserved = current
-    .flatMap((r) => r.res.filter((v) => v.a <= elapsed && elapsed < v.b))
-    .reduce((s, v) => s + v.litres, 0);
+  const reserved = runs[routeMode].book
+    .filter(v => v.a <= elapsed && elapsed < v.b)
+    .reduce((s,v) => s + v.litres, 0);
   el("liveLog").innerText =
     (text || "Ожидание следующего рейса") +
-    " · резерв в кросс-докинге " +
+    " · партии на полках ПВЗ " +
     reserved +
     " л\n" +
     log
@@ -75,6 +88,9 @@ function updateClock() {
       .join("\n");
   el("scrub").value = elapsed;
   plot(current);
+  updateMapContext(current,force);
+  renderOpeningLot();
+  el("truckLegStatus").textContent=elapsed>=CONFIG.shiftMinutes?"Смена завершена":current.length?"Рейсов в пути: "+current.length:"Ожидание рейса";
 }
 function stopClock() {
   playing = false;
@@ -98,6 +114,7 @@ function animate(now) {
   else frame = requestAnimationFrame(animate);
 }
 function toggleSimulation() {
+  if(planIssue||!validateInputs())return;
   if (playing) return stopClock();
   if (elapsed >= CONFIG.shiftMinutes) elapsed = 0;
   playing = true;

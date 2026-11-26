@@ -70,11 +70,13 @@ function applyPreset(key) {
   set("shelfSlider", p.shelf);
   set("storageDays", p.days);
 
+  volumes.small.forEach((v,i) => set(i===3 ? "kg" : "dim"+i, v));
+  el("bulkConsent").checked = false;
   el("stress").checked = false;
   // Городские кейсы работают в выбранном регионе. Для магистрали есть межгородской набор.
   if (key === "trunk") setGeo("intercity");
   else if (geoMode === "intercity") setGeo("local");
-  else updateParameters();
+  else refreshDestination();
 
   const cap = el("presetCaption");
   if (cap) cap.textContent = "Сценарий: " + p.label;

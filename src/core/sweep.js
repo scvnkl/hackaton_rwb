@@ -2,11 +2,13 @@ function sweepMatrix() {
   const tariffs = [8, 12, 16, 20, 24, 28];
   const loads = [50, 65, 80, 90];
 
+  if (planIssue) throw Error(planIssue);
+  const size = parcelCategory();
   const saved = {
     batch: el("batch").value,
     flow: el("flowSlider").value,
     trucks: el("truckCountSlider").value,
-    fee: CONFIG.hubPerBox[parcelSize],
+    fee: CONFIG.hubPerBox[size],
     override: LOAD_OVERRIDE,
   };
 
@@ -19,7 +21,7 @@ function sweepMatrix() {
     for (const load of loads) {
       LOAD_OVERRIDE = load;
       for (const fee of tariffs) {
-        CONFIG.hubPerBox[parcelSize] = fee;
+        CONFIG.hubPerBox[size] = fee;
 
         const direct = schedule("direct");
         const hybrid = schedule("hybrid");
@@ -30,9 +32,9 @@ function sweepMatrix() {
         out.push({
           "полки %": load,
           "тариф ПВЗ": fee,
-          "экономия ₽": Math.round(mh.margin - md.margin),
+          "экономия ₽": md.margin===null||mh.margin===null ? null : Math.round(mh.margin - md.margin),
           "рейсов через ПВЗ": viaHub + " / " + hybrid.trips.length,
-          вердикт: mh.margin > md.margin ? "гибрид" : "СЦ",
+          вердикт: md.margin===null||mh.margin===null ? "недостаточно дорог" : mh.margin > md.margin ? "гибрид" : "СЦ",
         });
       }
     }
@@ -40,7 +42,7 @@ function sweepMatrix() {
     el("batch").value = saved.batch;
     el("flowSlider").value = saved.flow;
     el("truckCountSlider").value = saved.trucks;
-    CONFIG.hubPerBox[parcelSize] = saved.fee;
+    CONFIG.hubPerBox[size] = saved.fee;
     LOAD_OVERRIDE = saved.override;
   }
 

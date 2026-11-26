@@ -109,6 +109,7 @@
             value="100"
           />
 
+          <p id="planStatus" class="plan-message" role="status" hidden></p>
           <label
             >Минута смены
             <input id="scrub" type="range" min="0" max="480" value="0" /></label
@@ -130,7 +131,7 @@
             </div>
             <div class="stat-cell">
               <div class="payment-value stat-num" id="stPvzEarned">0 ₽</div>
-              <div class="stat-txt">Пересортировка в ПВЗ · закрытые рейсы</div>
+              <div class="stat-txt">Начислено ПВЗ-хабам за обработку и хранение</div>
             </div>
           </div>
         </div>
@@ -225,7 +226,7 @@
                 value="100"
             /></label>
             <label
-              >Хранение партии, суток
+              >Хранение первой партии до смены, суток
               <input
                 id="storageDays"
                 type="number"
@@ -235,8 +236,7 @@
                 required
             /></label>
             <label
-              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние
-              ПВЗ</label
+              ><input id="useCompetition" type="checkbox" checked /> Учитывать соседние Ozon и Яндекс Маркет вместе с WB</label
             >
             <label
               >Заказов в партии
@@ -248,7 +248,7 @@
                 step="1"
                 required
             /></label>
-            <p>Упаковка, см (Д × Ш × В), и масса, кг</p>
+            <p>Упаковка, см (Д × Ш × В), и масса, кг. Тарифная категория: <strong id="packageClass"></strong>.</p>
             <label
               >Д
               <input
@@ -303,7 +303,11 @@
                 <option value="error">Пересорт одной коробки</option>
               </select></label
             >
-            <h3>Хранение запаса продавца</h3>
+            <section id="storedLot" class="lot-panel" hidden>
+              <h3>Первая партия со хранения</h3><p id="lotLedger"></p>
+              <button id="showStoragePickup" type="button">К моменту отгрузки</button>
+            </section>
+            <h3>Ручной остаток продавца</h3>
             <select id="stockPoint"></select>
             <button data-stock="receive">Принять 10</button
             ><button data-stock="sell">Продать 2</button
@@ -363,7 +367,7 @@
             <tr>
               <th>Схема</th>
               <th>Узлы</th>
-              <th>Тариф / заказ</th>
+              <th>Базовый тариф СЦ / заказ</th>
               <th>К оплате / заказ</th>
             </tr>
           </thead>
@@ -439,14 +443,14 @@
             <th>Спрос</th>
             <th>Выдано / возвраты</th>
             <th>Не вывезено</th>
-            <th>Остаток WB</th>
+            <th>ПВЗ · хранение</th><th>Остаток WB</th>
           </tr>
         </thead>
         <tbody></tbody>
       </table>
       <p>
         Допуск рейса — машина успевает вернуться до конца смены. Невывезенный
-        спрос переносится. Возвраты сторнируют выручку, расходы исправления
+        спрос остаётся в очереди на конец смены. Возвраты сторнируют выручку, расходы исправления
         оплачивает WB.
       </p></template
     >

@@ -1,125 +1,90 @@
-function choose(mode, n, t, incident, book, baselineStart = t) {
-  const base = trip("direct", null, n, baselineStart, incident);
-  if (mode === "direct" || !base) return base;
-  let best,
-    overloaded = 0,
-    slaBlocked = 0,
-    capacityBlocked = 0;
-  if (parcelSize === "oversize" && !el("bulkConsent").checked) {
-    base.reason = "Габаритный гибрид требует согласия на доплату";
-    return base;
-  }
-  if (fits())
-    for (const p of hubPool) {
-      if (calcLoadPct(p) > CONFIG.network.maxLoadForHub) {
-        overloaded++;
-        continue;
-      }
-      let r = trip("hybrid", p, n, t, incident);
-      if (!r) continue;
-      const extra = base ? r.eta - base.eta : 0;
-      if (slaBreach(extra)) {
-        slaBlocked++;
-        continue;
-      }
-      r.referencePrice = base.price;
-      r.premium = parcelSize === "oversize" ? CONFIG.bulk.premium : 0;
-      r.discount = r.premium ? 0 : Math.floor(CONFIG.buyerSavingsShare * Math.max(0, base.costs - r.costs) / n);
-      r.price = Math.max(0, r.referencePrice + r.premium - r.discount);
-      r.income = r.price * (r.issued - r.returned);
-      r.compPerOrder = Math.min(r.price, slaCompensation(extra));
-      r.price -= r.compPerOrder;
-      r.comp = r.compPerOrder * (r.issued - r.returned);
-      r.income -= r.comp;
-      r.margin = r.income - r.costs;
-      let v = r.res[0],
-        available = room(p);
-      const overlaps = book.filter(
-        (x) => x.id === p.id && x.b > v.a && x.a < v.b,
-      );
-      if (
-        available.litres < v.litres ||
-        overlaps.length ||
-        v.work > available.minutes
-      ) {
-        capacityBlocked++;
-        continue;
-      }
-      let feasible = true;
-      for (
-        let hour = Math.floor(v.a / 60);
-        hour <= Math.floor(v.b / 60);
-        hour++
-      ) {
-        let work = [...book.filter((x) => x.id === p.id), v].reduce(
-          (sum, x) =>
-            sum +
-            Math.max(
-              0,
-              Math.min(x.b, 60 * (hour + 1)) - Math.max(x.a, 60 * hour),
-            ),
-          0,
-        );
-        if (work > available.minutes) feasible = false;
-      }
-      if (!feasible) capacityBlocked++;
-      if (feasible && (!best || r.margin > best.margin)) best = r;
-    }
-  if (best && (!base || best.margin >= base.margin)) return best;
-  if (!base) return null;
-  base.reason = !fits() ? "Упаковка превышает допустимые параметры пилота" : best
-    ? "Через СЦ выгоднее для WB"
-    : [
-        overloaded && "Загрузка выше " + CONFIG.network.maxLoadForHub + "%",
-        slaBlocked && "Превышен допуск SLA",
-        capacityBlocked && "Не хватает полки или времени персонала",
-      ]
-        .filter(Boolean)
-        .join(" · ") || "Нет доступного дорожного маршрута через хаб";
-  base.canWait = capacityBlocked > 0;
-  return base;
+function priceHybrid(r, base) {
+  const paid = r.issued - r.returned;
+  r.referencePrice = base.price;
+  r.premium = parcelCategory() === "oversize" ? CONFIG.bulk.premium : 0;
+  r.discount = r.premium ? 0 : Math.floor(CONFIG.buyerSavingsShare * Math.max(0, base.costs-r.costs) / r.n);
+  const quoted = Math.max(0,base.price+r.premium-r.discount);
+  r.compPerOrder = Math.min(quoted,slaCompensation(r.eta-base.eta));
+  r.price = quoted-r.compPerOrder;
+  r.comp = r.compPerOrder*paid;
+  r.income = r.price*paid;
+  r.margin = r.income-r.costs;
 }
+
+function choose(mode,n,t,incident,book,baselineStart=t,deadline=Infinity,days=0) {
+  const base = trip("direct",null,n,baselineStart,incident,days);
+  if(!base)return null;
+  const control = base.end <= deadline ? base : null;
+  if(mode==="direct")return control;
+  if(!fits() || (parcelCategory()==="oversize" && !el("bulkConsent").checked)){
+    base.reason = !fits() ? "Упаковка превышает допуски ячейки" : "Габаритный гибрид требует согласия на доплату";
+    return control;
+  }
+
+  const reasons=new Set();
+  let best,maxFree=0;
+  for(const p of hubPool){
+    const r=trip("hybrid",p,n,t,incident,days);
+    if(!r)continue;
+    if(r.end>deadline){reasons.add("Возврат машины после смены");continue;}
+    const arrival=r.res.find(v=>v.work>0).a;
+    const occupied=reservedAt(book,p.id,arrival);
+    const free=room(p,occupied).litres;
+    maxFree=Math.max(maxFree,free);
+    if(calcLoadPct(p,occupied)>CONFIG.network.maxLoadForHub){reasons.add("Загрузка выше "+CONFIG.network.maxLoadForHub+"%");continue;}
+    if(n*volume()>free){reasons.add("Мало места");continue;}
+    if(!canReserve(p,r.res,book)){reasons.add("Резерв полки или смена сотрудника заняты");continue;}
+    if(slaBreach(r.eta-base.eta)){reasons.add("Превышен допуск SLA");continue;}
+    if(r.pvzHub+r.pvzStorage < hubLabour(r)){reasons.add("Выплата хабу ниже затрат на труд");continue;}
+    priceHybrid(r,base);
+    if(!best || r.margin>best.margin || (r.margin===best.margin && r.end<best.end))best=r;
+  }
+  // A late classical round trip is still a valid price/SLA reference, but is not dispatchable.
+  if(best && (control ? best.margin>=base.margin : best.margin>=0))return best;
+  base.canWait = reasons.has("Резерв полки или смена сотрудника заняты") || (reasons.has("Мало места") && book.length>0);
+  if(reasons.delete("Мало места"))reasons.add("Партия "+n+" шт. занимает "+(n*volume()).toLocaleString("ru-RU")+" л, максимум свободно "+Math.floor(maxFree).toLocaleString("ru-RU")+" л");
+  base.reason = best ? "Через СЦ выгоднее для WB" : [...reasons].join(" · ") || "Нет подтверждённой дороги через доступный хаб";
+  return control;
+}
+
 function schedule(mode) {
-  const rate = (140 * val("flowSlider")) / 100 / 60,
-    demand = Math.floor(rate * CONFIG.shiftMinutes),
-    fleet = Array(val("truckCountSlider")).fill(0),
-    book = [],
-    trips = [];
-  let sent = 0;
-  while (sent < demand) {
-    const n = Math.min(manifest(), demand - sent);
-    if (!n) break;
-    let v = fleet.indexOf(Math.min(...fleet)),
-      t = Math.max(fleet[v], (sent + n) / rate);
-    const incident = !trips.length ? el("incident").value : "none";
-    let r = choose(mode, n, t, incident, book);
-    if (mode === "hybrid" && r?.mode === "direct" && r.canWait) {
-      for (const delay of [15, 30]) {
-        const alt = choose(mode, n, t + delay, incident, book, t);
-        if (alt?.mode === "hybrid" && alt.end <= CONFIG.shiftMinutes) {
-          r = alt;
-          break;
-        }
+  const rate=140*val("flowSlider")/100/60;
+  const demand=Math.floor(rate*CONFIG.shiftMinutes);
+  const book=[],trips=[],fleet=Array(val("truckCountSlider")).fill(0);
+  const firstIncident=el("incident").value;
+  const missingRoads=!hasItinerary(roadItinerary(chain("direct",null),firstIncident));
+  let sent=0;
+  while(!missingRoads && sent<demand){
+    const n=Math.min(manifest(),demand-sent);
+    if(!n)break;
+    const van=fleet.indexOf(Math.min(...fleet));
+    const ready=(sent+n)/rate, start=Math.max(fleet[van],ready);
+    const incident=sent===0 ? firstIncident : "none";
+    const days=sent===0 ? val("storageDays") : 0;
+    let r=choose(mode,n,start,incident,book,start,CONFIG.shiftMinutes,days);
+    if(mode==="hybrid" && (!r || (r.mode==="direct" && r.canWait))){
+      for(const delay of [15,30]){
+        const alt=choose(mode,n,start+delay,incident,book,start,CONFIG.shiftMinutes,days);
+        if(alt?.mode==="hybrid"){r=alt;break;}
       }
     }
-    if (r?.mode === "hybrid" && r.end > CONFIG.shiftMinutes)
-      r = choose("direct", n, t, incident, book);
-    if (!r || r.end > CONFIG.shiftMinutes) break;
-    r.ready = (sent + n) / rate;
-    r.van = v + 1;
-    fleet[v] = r.end;
-    sent += n;
-    book.push(...r.res);
-    trips.push(r);
+    if(!r)break;
+    r.ready=ready; r.van=van+1;
+    fleet[van]=r.end; sent+=n;
+    book.push(...r.res); trips.push(r);
   }
-  return { trips, demand };
+  return {trips,demand,book,missingRoads};
 }
+
+function hubLabour(r){return r.res.reduce((sum,v)=>sum+v.work*CONFIG.hubWorkPerMin,0);}
+
 function metrics(mode, t, run = runs[mode]) {
   let issued = 0,
     back = 0,
     pvz = 0,
     pvzBase = 0,
     pvzHub = 0,
+    pvzStorage = 0,
     comp = 0,
     margin = 0,
     finished = 0;
@@ -130,9 +95,12 @@ function metrics(mode, t, run = runs[mode]) {
         issued += s.delta;
         back += s.back;
       }
+    if(r.pvzStorage && r.openingLot.releasedAt<=t){
+      pvzStorage+=r.pvzStorage; pvz+=r.pvzStorage;
+    }
     if (r.end <= t) {
       finished++;
-      pvz += r.pvz;
+      pvz += r.pvz-r.pvzStorage;
       pvzBase += r.pvzBase;
       pvzHub += r.pvzHub;
       comp += r.comp;
@@ -145,8 +113,9 @@ function metrics(mode, t, run = runs[mode]) {
     pvz,
     pvzBase,
     pvzHub,
+    pvzStorage,
     comp,
-    margin: margin - (CONFIG.shiftFixed * t) / CONFIG.shiftMinutes,
+    margin: run.missingRoads ? null : margin - (CONFIG.shiftFixed * t) / CONFIG.shiftMinutes,
     finished,
   };
 }

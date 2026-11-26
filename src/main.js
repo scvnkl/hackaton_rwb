@@ -19,22 +19,17 @@ for (const button of document.querySelectorAll("[data-size]"))
   button.addEventListener("click", () => setSize(button.dataset.size));
 for (const button of document.querySelectorAll("[data-stock]"))
   button.addEventListener("click", () => storeAction(button.dataset.stock));
-for (const id of [
-  "storageDays",
-  "bulkConsent",
-  "useCompetition",
-  "batch",
-  "dim0",
-  "dim1",
-  "dim2",
-  "kg",
-  "stress",
-  "incident",
-  "stockPoint",
-])
+for (const id of ["bulkConsent", "useCompetition", "stress"])
   el(id).addEventListener("change", updateParameters);
-for (const id of ["truckCountSlider", "flowSlider", "shelfSlider"])
+el("stockPoint").addEventListener("change", () => renderManualStock());
+for (const id of [...numericFields, "truckCountSlider", "flowSlider", "shelfSlider"])
   el(id).addEventListener("input", updateParameters);
+el("incident").addEventListener("change", refreshDestination);
+el("showStoragePickup").addEventListener("click",()=>{
+  const lot=runs[routeMode]?.trips[0]?.openingLot;
+  if(!lot||planIssue)return;
+  stopClock();elapsed=lot.releasedAt;updateClock();
+});
 el("scrub").addEventListener("input", (event) => {
   stopClock();
   elapsed = Number(event.target.value);
@@ -59,15 +54,20 @@ let importNumber = 0;
 el("regionFile").addEventListener("change", async e => {
   const file = e.target.files[0];
   if (!file) return;
+  const request = ++catalogGeneration;
+  citySearch?.abort();
   try {
-    const catalog = validateCatalog(JSON.parse(await file.text()));
+    const contents = await file.text();
+    if (request !== catalogGeneration) return;
+    const catalog = validateCatalog(JSON.parse(contents));
     const key = "import-" + (++importNumber);
-    REGION_CATALOGS[key] = catalog;
-    regionOptions();
-    configureRegion(key);
+    configureRegion(key,catalog);
     el("importStatus").textContent = "Загружен регион " + catalog.city;
-  } catch (error) { el("importStatus").textContent = error.message; }
-  e.target.value = "";
+  } catch (error) {
+    if (request === catalogGeneration) el("importStatus").textContent = error.message;
+  } finally {
+    if (e.target.files[0] === file) e.target.value = "";
+  }
 });
 map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
 configureRegion("yoshkar-ola");
