@@ -1,5 +1,5 @@
 function sweepMatrix() {
-  const tariffs = [8, 12, 16, 20, 24, 28];
+  const tariffs = [10, 20, 30, 40, 50, 60, 70];
   const loads = [50, 65, 80, 90];
 
   if (planIssue) throw Error(planIssue);

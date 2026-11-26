@@ -178,7 +178,7 @@ function sweepView() {
   const run = h("button", {class: "btn primary small", type: "button"}, lastSweep ? "Пересчитать" : "Построить карту выгодности");
   wrap.append(
     h("h4", {class: "section-title"}, "Где проходит граница выгодности"),
-    h("p", {class: "hint"}, "24 смены: тариф ПВЗ-хаба × заполненность полок. Партия 20, поток 1×, 2 машины. Цвет — эффект Mesh-схемы для WB за смену."),
+    h("p", {class: "hint"}, "28 смен: тариф ПВЗ-хаба × заполненность полок. Партия 20, поток 1×, 2 машины. Цвет — эффект Mesh-схемы для WB за смену."),
     run);
   run.addEventListener("click", () => {
     run.disabled = true; run.textContent = "Считаем…";
