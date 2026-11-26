@@ -2,6 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
+    <meta name="wb-sim-2gis-key" content="" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
       WB ПВЗ — Доставка WB через СЦ или ПВЗ-склад
@@ -28,6 +29,7 @@
     <script defer src="src/state.js"></script>
     <script defer src="src/map/atlas.js"></script>
     <script defer src="src/map/map.js"></script>
+    <script defer src="src/map/twogis.js"></script>
     <script defer src="src/model/capacity.js"></script>
     <script defer src="src/model/trips.js"></script>
     <script defer src="src/model/shift.js"></script>
@@ -142,6 +144,12 @@
           <details class="audit"><summary>Данные региона и дорожное покрытие</summary>
             <p class="muted-note" id="catalogStatus"></p>
             <p class="muted-note" id="loadDetail"></p>
+            <form id="gisConfig">
+              <label>Ключ карты 2ГИС (Raster Tiles API)
+                <input id="gisKey" type="password" autocomplete="off" required />
+              </label>
+              <button type="submit" class="seg-btn">Подключить 2ГИС</button>
+            </form>
             <form id="regionSearch"><label>Другой город <input id="regionQuery" type="search" placeholder="Самара, Россия" required /></label>
               <button class="seg-btn" type="submit">Найти ПВЗ</button></form>
             <label>Подключить справочник региона <input id="regionFile" type="file" accept=".json,application/json" /></label>
@@ -345,8 +353,10 @@
           </div>
 
           <div class="layer-box">
+            <button class="layer-btn" id="btn2gis">2ГИС</button>
             <button class="layer-btn active" id="btnVec">Карта</button>
             <button class="layer-btn" id="btnSat">Спутник</button>
+            <small id="gisStatus" role="status" hidden></small>
           </div>
         </div>
       </main>

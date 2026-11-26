@@ -1,6 +1,17 @@
 el("geoLocal").addEventListener("click", () => setGeo("local"));
 el("geoInter").addEventListener("click", () => setGeo("intercity"));
 el("btnVec").addEventListener("click", () => setStyleMode("vector"));
+el("btn2gis").addEventListener("click", () => setStyleMode("2gis"));
+el("gisConfig").addEventListener("submit", event => {
+  event.preventDefault();
+  const value = el("gisKey").value.trim();
+  if (!value) return;
+  stopGisLayer();
+  gisKey = value;
+  try { localStorage.setItem("wb-sim.2gis-key", value); } catch {}
+  el("gisKey").value = "";
+  setStyleMode("2gis");
+});
 el("btnSat").addEventListener("click", () => setStyleMode("satellite"));
 el("optHybrid").addEventListener("click", () => setRouteMode("hybrid"));
 el("optDirect").addEventListener("click", () => setRouteMode("direct"));
@@ -70,5 +81,6 @@ el("regionFile").addEventListener("change", async e => {
   }
 });
 map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
+if (gisKey) styleMode = "2gis";
 configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);

@@ -144,7 +144,15 @@ function setRouteMode(mode) {
 }
 
 function setStyleMode(m) {
+  if (m === "2gis" && !gisKey) {
+    const field = el("gisKey");
+    field.closest("details").open = true;
+    field.focus();
+    return;
+  }
+  if (m !== "2gis") stopGisLayer();
   styleMode = m;
+  el("btn2gis").classList.toggle("active", m === "2gis");
   document.getElementById("btnVec").classList.toggle("active", m === "vector");
   document
     .getElementById("btnSat")
@@ -153,10 +161,12 @@ function setStyleMode(m) {
   if (REGION_STREETS[regionId] && !regionAtlases.has(regionId))
     regionAtlases.set(regionId, new VectorAtlas(REGION_STREETS[regionId]));
   const background = nativeAtlas ? localAtlas : regionAtlases.get(regionId);
-  const visible = m === "satellite" ? [satLayer] : [background, nativeAtlas ? null : streetLayer].filter(Boolean);
+  const visible = m === "satellite" ? [satLayer] :
+    [background, !nativeAtlas && m === "vector" ? streetLayer : null].filter(Boolean);
   for (const layer of [satLayer, streetLayer, localAtlas, ...regionAtlases.values()]) {
     if (!visible.includes(layer)) map.removeLayer(layer);
   }
   for (const layer of visible) layer.addTo(map);
+  if (m === "2gis") showGisLayer();
   setTimeout(() => map.invalidateSize(), 100);
 }

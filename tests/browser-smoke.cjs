@@ -146,6 +146,33 @@ async function check(page, url) {
     const page = await browser.newPage({viewport:{width:1366,height:768}});
     const url = process.argv[2] || pathToFileURL(path.resolve(__dirname,"../pvz-wb-real-streets-v12.html")).href;
     await check(page,url);
+    await page.goto(url);
+    const errors = [];
+    page.on("pageerror", err => errors.push(err.message));
+    await page.locator("#btn2gis").click();
+    await page.locator("#gisKey").fill("test-key");
+    const tilePattern = /^https:\/\/tile[0-4]\.maps\.2gis\.com\/v2\/tiles\/online_sd\//;
+    let requests = 0;
+    await page.route(tilePattern, route => {
+      assert.equal(new URL(route.request().url()).searchParams.get("key"), "test-key");
+      requests++;
+      return route.fulfill({contentType:"image/png",path:path.resolve(__dirname,"../vendor/leaflet/images/marker-icon.png")});
+    });
+    await page.locator("#gisConfig button").click();
+    await page.waitForFunction(()=>gisLayer?.getContainer().querySelector("img.leaflet-tile-loaded"));
+    assert.ok(requests > 0);
+    assert.equal(await page.evaluate(()=>styleMode),"2gis");
+    await page.reload();
+    await page.waitForFunction(()=>gisLayer?.getContainer().querySelector("img.leaflet-tile-loaded"));
+    await page.locator("#scrub").evaluate(input=>{input.value=57;input.dispatchEvent(new Event("input"));});
+    await page.locator("#btnVec").click();
+    await page.unroute(tilePattern);
+    await page.locator("#gisConfig").evaluate(form => form.closest("details").open = true);
+    await page.locator("#gisKey").fill("unavailable-test-key");
+    await page.locator("#gisConfig button").click();
+    await page.waitForFunction(()=>styleMode==="vector" && document.getElementById("gisStatus").textContent.includes("недоступен"));
+    assert.equal(await page.locator("#scrub").inputValue(),"57");
+    assert.deepEqual(errors,[]);
     console.log("Регрессии интерфейса прошли · " + url);
   } finally { await browser.close(); }
 })().catch(error=>{ console.error(error); process.exitCode=1; });

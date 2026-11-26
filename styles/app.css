@@ -732,6 +732,8 @@ input[type="range"] {
 .plan-message {font-size:12px;}
 button:disabled, input:disabled {opacity:.6;cursor:default}
 .chain-banner {white-space:pre-line}
+.layer-box {position:relative;}
+#gisStatus {position:absolute; top:100%; right:0; width:180px; padding:7px; background:white; color:#38284a; border-radius:6px;}
 .preset-row {
   display: flex;
   flex-wrap: wrap;

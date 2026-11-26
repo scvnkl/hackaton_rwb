@@ -2,6 +2,7 @@
 <html lang="ru">
   <head>
     <meta charset="UTF-8" />
+    <meta name="wb-sim-2gis-key" content="" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>
       WB ПВЗ — Доставка WB через СЦ или ПВЗ-склад
@@ -1403,6 +1404,8 @@ input[type="range"] {
 .plan-message {font-size:12px;}
 button:disabled, input:disabled {opacity:.6;cursor:default}
 .chain-banner {white-space:pre-line}
+.layer-box {position:relative;}
+#gisStatus {position:absolute; top:100%; right:0; width:180px; padding:7px; background:white; color:#38284a; border-radius:6px;}
 .preset-row {
   display: flex;
   flex-wrap: wrap;
@@ -1498,6 +1501,7 @@ button:disabled, input:disabled {opacity:.6;cursor:default}
   background: #ef4444;
 }
 </style>
+
 
 
 
@@ -1631,6 +1635,12 @@ button:disabled, input:disabled {opacity:.6;cursor:default}
           <details class="audit"><summary>Данные региона и дорожное покрытие</summary>
             <p class="muted-note" id="catalogStatus"></p>
             <p class="muted-note" id="loadDetail"></p>
+            <form id="gisConfig">
+              <label>Ключ карты 2ГИС (Raster Tiles API)
+                <input id="gisKey" type="password" autocomplete="off" required />
+              </label>
+              <button type="submit" class="seg-btn">Подключить 2ГИС</button>
+            </form>
             <form id="regionSearch"><label>Другой город <input id="regionQuery" type="search" placeholder="Самара, Россия" required /></label>
               <button class="seg-btn" type="submit">Найти ПВЗ</button></form>
             <label>Подключить справочник региона <input id="regionFile" type="file" accept=".json,application/json" /></label>
@@ -1834,8 +1844,10 @@ button:disabled, input:disabled {opacity:.6;cursor:default}
           </div>
 
           <div class="layer-box">
+            <button class="layer-btn" id="btn2gis">2ГИС</button>
             <button class="layer-btn active" id="btnVec">Карта</button>
             <button class="layer-btn" id="btnSat">Спутник</button>
+            <small id="gisStatus" role="status" hidden></small>
           </div>
         </div>
       </main>
@@ -152675,6 +152687,66 @@ function loadClass(pct) {
 
 </script>
 <script>
+let gisKey = document.querySelector('meta[name="wb-sim-2gis-key"]').content.trim();
+try { gisKey = localStorage.getItem("wb-sim.2gis-key") || gisKey; } catch {}
+let gisLayer = null;
+let gisTimeout;
+
+function gisStatus(message) {
+  el("gisStatus").hidden = !message;
+  el("gisStatus").textContent = message;
+}
+
+function stopGisLayer() {
+  clearTimeout(gisTimeout);
+  if (gisLayer) {
+    const previous = gisLayer;
+    gisLayer = null;
+    previous.remove();
+  }
+  gisStatus("");
+}
+
+function showGisLayer() {
+  if (gisLayer) return;
+  const layer = L.tileLayer(
+    "https://tile{s}.maps.2gis.com/v2/tiles/online_sd/{z}/{x}/{y}.png?key=" + encodeURIComponent(gisKey),
+    {subdomains:"01234", maxNativeZoom:18, maxZoom:19, zIndex:3,
+      attribution:'© <a href="https://2gis.ru/">2ГИС</a>'}
+  );
+  gisLayer = layer;
+  let loaded = false;
+  function fallback() {
+    if (layer !== gisLayer) return;
+    setStyleMode("vector");
+    gisStatus("2ГИС недоступен. Включена обычная карта. Для повтора нажмите «2ГИС».");
+  }
+  layer.on("loading", () => {
+    if (layer !== gisLayer) return;
+    loaded = false;
+    gisStatus("Загрузка 2ГИС…");
+    clearTimeout(gisTimeout);
+    gisTimeout = setTimeout(fallback, 12000);
+  });
+  layer.on("tileload", () => {
+    if (layer !== gisLayer) return;
+    loaded = true;
+    clearTimeout(gisTimeout);
+    gisStatus("");
+  });
+  layer.on("tileerror", event => { event.tile.style.visibility = "hidden"; });
+  // Leaflet still uses the map after emitting "load". Remove the layer on the next turn.
+  layer.on("load", () => {
+    if (!loaded && layer === gisLayer) {
+      clearTimeout(gisTimeout);
+      gisTimeout = setTimeout(fallback, 0);
+    }
+  });
+  layer.addTo(map);
+}
+
+</script>
+<script>
 function backgroundLoad(pvz) {
   if (LOAD_OVERRIDE !== null) return LOAD_OVERRIDE;
   if (el("stress").checked) return 99;
@@ -153517,7 +153589,15 @@ function setRouteMode(mode) {
 }
 
 function setStyleMode(m) {
+  if (m === "2gis" && !gisKey) {
+    const field = el("gisKey");
+    field.closest("details").open = true;
+    field.focus();
+    return;
+  }
+  if (m !== "2gis") stopGisLayer();
   styleMode = m;
+  el("btn2gis").classList.toggle("active", m === "2gis");
   document.getElementById("btnVec").classList.toggle("active", m === "vector");
   document
     .getElementById("btnSat")
@@ -153526,11 +153606,13 @@ function setStyleMode(m) {
   if (REGION_STREETS[regionId] && !regionAtlases.has(regionId))
     regionAtlases.set(regionId, new VectorAtlas(REGION_STREETS[regionId]));
   const background = nativeAtlas ? localAtlas : regionAtlases.get(regionId);
-  const visible = m === "satellite" ? [satLayer] : [background, nativeAtlas ? null : streetLayer].filter(Boolean);
+  const visible = m === "satellite" ? [satLayer] :
+    [background, !nativeAtlas && m === "vector" ? streetLayer : null].filter(Boolean);
   for (const layer of [satLayer, streetLayer, localAtlas, ...regionAtlases.values()]) {
     if (!visible.includes(layer)) map.removeLayer(layer);
   }
   for (const layer of visible) layer.addTo(map);
+  if (m === "2gis") showGisLayer();
   setTimeout(() => map.invalidateSize(), 100);
 }
 
@@ -153539,6 +153621,17 @@ function setStyleMode(m) {
 el("geoLocal").addEventListener("click", () => setGeo("local"));
 el("geoInter").addEventListener("click", () => setGeo("intercity"));
 el("btnVec").addEventListener("click", () => setStyleMode("vector"));
+el("btn2gis").addEventListener("click", () => setStyleMode("2gis"));
+el("gisConfig").addEventListener("submit", event => {
+  event.preventDefault();
+  const value = el("gisKey").value.trim();
+  if (!value) return;
+  stopGisLayer();
+  gisKey = value;
+  try { localStorage.setItem("wb-sim.2gis-key", value); } catch {}
+  el("gisKey").value = "";
+  setStyleMode("2gis");
+});
 el("btnSat").addEventListener("click", () => setStyleMode("satellite"));
 el("optHybrid").addEventListener("click", () => setRouteMode("hybrid"));
 el("optDirect").addEventListener("click", () => setRouteMode("direct"));
@@ -153608,6 +153701,7 @@ el("regionFile").addEventListener("change", async e => {
   }
 });
 map.on("moveend", () => { if (activeChain.finalPvz) renderMarkers(); });
+if (gisKey) styleMode = "2gis";
 configureRegion("yoshkar-ola");
 setTimeout(() => map.invalidateSize(), 100);
 
