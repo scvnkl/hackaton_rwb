@@ -13,11 +13,12 @@ WB Mesh helps a dispatcher decide where to process a batch of parcels. It compar
 ## First shift
 
 1. Open the downloaded HTML file in a browser. Street maps and road graphs for Yoshkar-Ola and Cheboksary are included for offline use.
-2. Under «Пульт», select the city and destination pickup point. Open «Маршрут» to compare stops, roads and delivery times. Start the vehicles, open «Итоги смены» for results and «Деньги» for the delivery price and pickup point payment.
+2. Choose **English** in the top bar if needed. Select a city, then open **Route** to choose the destination pickup point and compare stops, roads and delivery times.
+3. Select **Start shift**, then **Shift results** to compare outcomes. Open **Costs** for the delivery price and pickup point payment. You can switch languages during a trip.
 
 ## Urgent parcels
 
-Under «Срочные заказы → такси WB», compare a taxi already heading that way with a dedicated van. Select «Подтвердить операцию» and follow the yellow dashed route using the shift clock. The pilot assumes ₽99 per pickup plus ₽9/km.
+In **Dispatch**, open **Urgent orders → WB taxi** to compare a taxi already heading that way with a dedicated van. Select **Confirm operation** and follow the yellow dashed route using the shift clock. The pilot assumes ₽99 per pickup plus ₽9/km.
 
 ## Simulated shift
 

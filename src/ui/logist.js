@@ -49,7 +49,7 @@ function renderLogist(force = false) {
       h("td", {}, h("b", {}, clockAt(r.start)), h("small", {}, "маш. №" + r.van + " · " + r.n + " шт")),
       h("td", {}, r.mode === "hybrid"
         ? h("span", {class: "lg-route hub"}, "ПВЗ-хаб", h("small", {}, pvzName(r.hub)))
-        : h("span", {class: "lg-route sc"}, "СЦ-2", h("small", {}, r.reason ? r.reason.slice(0, 38) : ""))),
+        : h("span", {class: "lg-route sc"}, "СЦ-2", h("small", {title: r.reason || ""}, r.reason || ""))),
       h("td", {class: "num"}, r.mode === "hybrid" ? h("b", {class: "pos"}, signRub(r.gain ?? 0)) : "—"),
       h("td", {}, h("span", {class: "lg-st " + st.c}, dec ? "✓ " + dec : st.t)));
     tr.addEventListener("click", () => { setRouteMode("hybrid"); elapsed = Math.min(CONFIG.shiftMinutes, r.start + 1); updateClock(true); });

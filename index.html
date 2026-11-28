@@ -42,6 +42,8 @@
     <script defer src="src/ui/playback.js"></script>
     <script defer src="src/ui/controls.js"></script>
     <script defer src="src/main.js"></script>
+    <script defer src="src/ui/english.js"></script>
+    <script defer src="src/ui/language.js"></script>
   </head>
   <body>
     <header class="topbar">
@@ -62,6 +64,10 @@
       </div>
 
       <div class="top-actions">
+        <select id="uiLanguage" class="select compact" aria-label="Language / Язык" translate="no">
+          <option value="ru" lang="ru">Русский</option>
+          <option value="en" lang="en">English</option>
+        </select>
         <button class="btn ghost" id="drawerFab" type="button">
           <span class="ico">📈</span> Аналитика <span class="pill" id="fabBadge">граница выгоды</span>
         </button>

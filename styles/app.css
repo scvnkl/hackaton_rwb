@@ -67,6 +67,8 @@ h2, h3, h4 { margin: 0; }
 }
 .topbar .select.compact option { color: var(--text); }
 .top-actions { display: flex; gap: 10px; }
+.topbar #uiLanguage { width: auto; }
+.lg-route.sc small { display: block; max-width: 24ch; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .topbar .btn.ghost { background: rgba(255, 255, 255, 0.16); color: #fff; border-color: transparent; }
 .topbar .btn.ghost:hover { background: rgba(255, 255, 255, 0.26); }
 .topbar .btn.primary { background: #fff; color: var(--wb-deep); }

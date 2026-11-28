@@ -14,6 +14,13 @@ async function check(page, url) {
   // Регрессии закреплены на учебных ставках v12 (реальные ставки проверяет dispatch.test.cjs).
   await page.evaluate(()=>{Object.assign(CONFIG,{hubWorkPerMin:4,sc2PerBox:52,perKm:18,perMin:1.5,sellerPerBox:55,storagePerBoxDay:0.8});CONFIG.hubLevel.rentPerM2=900;updateParameters();});
   const get = id => page.locator("#" + id);
+  await get("uiLanguage").selectOption("en");
+  assert.equal(await page.locator('[data-tab="logist"]').textContent(), "Dispatch");
+  await get("openSummary").click();
+  assert.match(await page.locator("#summaryModal").innerText(), /Shift recommendation/i);
+  await page.locator(".close-modal-btn").click();
+  await get("uiLanguage").selectOption("ru");
+  assert.equal(await page.locator('[data-tab="logist"]').textContent(), "Пульт");
   const read = async id => (await get(id).textContent()).replace(/\s+/g," ").trim();
   const preset = name => page.locator('[data-preset="'+name+'"]').click();
   const range = (id,n) => get(id).evaluate((input,value) => {
@@ -145,7 +152,7 @@ async function check(page, url) {
 (async () => {
   const browser = await chromium.launch({channel:process.env.BROWSER_CHANNEL || undefined});
   try {
-    const page = await browser.newPage({viewport:{width:1366,height:768}});
+    const page = await browser.newPage({locale:"ru-RU", viewport:{width:1366,height:768}});
     const url = process.argv[2] || pathToFileURL(path.resolve(__dirname,"../pvz-wb-real-streets-v12.html")).href;
     await check(page,url);
     await page.goto(url);
